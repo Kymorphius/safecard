@@ -18,4 +18,6 @@ pub enum ErrorCode {
     RefundNotAllowed,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    #[msg("This token is not supported (the escrow did not receive the full price)")]
+    UnsupportedMint,
 }

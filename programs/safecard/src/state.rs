@@ -59,3 +59,49 @@ pub struct Card {
     pub purchased_ts: i64,
     pub bump: u8,
 }
+
+/// 以 SPL 代币（如 USDC、USDT）计价的套餐。
+#[account]
+#[derive(InitSpace)]
+pub struct TokenPlan {
+    pub merchant: Pubkey,
+    pub plan_id: u64,
+    #[max_len(MAX_NAME_LEN)]
+    pub name: String,
+    pub mint: Pubkey,
+    /// 以代币最小单位计的总价
+    pub price: u64,
+    pub sessions: u32,
+    pub active: bool,
+    pub bump: u8,
+}
+
+/// 代币预付卡。钱放在以本账户为 authority 的关联代币账户（vault）里。
+#[account]
+#[derive(InitSpace)]
+pub struct TokenCard {
+    pub owner: Pubkey,
+    pub merchant: Pubkey,
+    pub plan: Pubkey,
+    pub mint: Pubkey,
+    pub total_sessions: u32,
+    pub remaining_sessions: u32,
+    pub per_session: u64,
+    /// vault 中剩余的托管金额（代币最小单位）
+    pub escrow: u64,
+    pub purchased_ts: i64,
+    pub bump: u8,
+}
+
+/// 商家在某个代币上的资金统计（金额不能和 SOL 混在一起算）。
+/// 售卡数、退款次数和活跃时间仍记在 Merchant 上，跨币种通用。
+#[account]
+#[derive(InitSpace)]
+pub struct MerchantTokenStats {
+    pub merchant: Pubkey,
+    pub mint: Pubkey,
+    pub total_escrowed: u64,
+    pub total_released: u64,
+    pub total_refunded: u64,
+    pub bump: u8,
+}
