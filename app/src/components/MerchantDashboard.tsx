@@ -121,6 +121,8 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
   const [origin, setOrigin] = useState('');
   useEffect(() => setOrigin(window.location.origin), []);
   const checkInUrl = `${origin}/m/${merchant.address}`;
+  // 手机相机扫码时直接在 Phantom 的内置浏览器里打开店铺页（普通手机浏览器没有钱包）
+  const phantomUrl = `https://phantom.com/ul/browse/${encodeURIComponent(checkInUrl)}?ref=${encodeURIComponent(origin)}`;
   const closeSend = useSend();
 
   const refreshAll = () => {
@@ -176,9 +178,11 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
         <Section title={t('md.qr')}>
           <div className="panel flex flex-col items-center p-5 text-center">
             <div className="rounded-2xl bg-white p-3">
-              {origin ? <QRCodeSVG value={checkInUrl} size={176} /> : <div className="h-[176px] w-[176px]" />}
+              {origin ? <QRCodeSVG value={phantomUrl} size={176} /> : <div className="h-[176px] w-[176px]" />}
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted">{t('md.qrHint')}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-subtle">{t('md.qrOther')}</p>
+            <p className="mono mt-1 break-all text-[11px] text-subtle">{checkInUrl.replace(/^https?:\/\//, '')}</p>
             <Link
               className="mt-2 inline-flex items-center gap-0.5 text-xs text-fg underline decoration-line-strong underline-offset-4"
               href={`/m/${merchant.address}`}
