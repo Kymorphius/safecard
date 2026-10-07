@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { fetchMerchants, formatSol, shortAddr } from '@/lib/solana';
+import { SOL, currencyForMint, formatMoney } from '@/lib/currency';
+import { fetchMerchants, fetchTokenStats, shortAddr } from '@/lib/solana';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { merchantHasNoRefunds } from '@/lib/badges';
@@ -13,6 +14,13 @@ export function MerchantList() {
   const { client } = useApp();
   const { t } = useI18n();
   const { data, error, loading } = usePoll('merchants', () => fetchMerchants(client.rpc), 8000);
+  const tokenStats = usePoll('tstats:all', () => fetchTokenStats(client.rpc), 15000);
+  const escrowLabel = (m: { address: string; totalEscrowed: bigint }) => {
+    const parts = [formatMoney(m.totalEscrowed, SOL)];
+    for (const s of tokenStats.data ?? [])
+      if (s.merchant === m.address && s.totalEscrowed > BigInt(0)) parts.push(formatMoney(s.totalEscrowed, currencyForMint(s.mint)));
+    return parts.join(' · ');
+  };
 
   if (loading) return <div className="panel h-40 animate-pulse" />;
   if (error) return <p className="text-sm text-danger">{t('common.loadFailed')}</p>;
@@ -42,7 +50,7 @@ export function MerchantList() {
             <div className="mono mt-0.5 text-xs text-subtle">{shortAddr(m.address)}</div>
           </div>
           <div className="flex gap-5 text-xs text-muted">
-            <span className="num">{t('home.inEscrow', { amount: formatSol(m.totalEscrowed) })}</span>
+            <span className="num">{t('home.inEscrow', { amount: escrowLabel(m) })}</span>
             <span className="num">{t('home.sold', { n: m.cardsSold.toString() })}</span>
             <span className="num">{t('home.refunds', { n: m.refundCount.toString() })}</span>
           </div>

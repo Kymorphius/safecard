@@ -30,6 +30,8 @@ export const SAFECARD_ERROR__NO_SESSIONS_LEFT = 0x1775; // 6005
 export const SAFECARD_ERROR__REFUND_NOT_ALLOWED = 0x1776; // 6006
 /** MathOverflow: Arithmetic overflow */
 export const SAFECARD_ERROR__MATH_OVERFLOW = 0x1777; // 6007
+/** UnsupportedMint: This token is not supported (the escrow did not receive the full price) */
+export const SAFECARD_ERROR__UNSUPPORTED_MINT = 0x1778; // 6008
 
 export type SafecardError =
   | typeof SAFECARD_ERROR__INVALID_PLAN
@@ -39,7 +41,8 @@ export type SafecardError =
   | typeof SAFECARD_ERROR__NAME_TOO_LONG
   | typeof SAFECARD_ERROR__NO_SESSIONS_LEFT
   | typeof SAFECARD_ERROR__PLAN_INACTIVE
-  | typeof SAFECARD_ERROR__REFUND_NOT_ALLOWED;
+  | typeof SAFECARD_ERROR__REFUND_NOT_ALLOWED
+  | typeof SAFECARD_ERROR__UNSUPPORTED_MINT;
 
 let safecardErrorMessages: Record<SafecardError, string> | undefined;
 if (process.env["NODE_ENV"] !== "production") {
@@ -52,6 +55,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [SAFECARD_ERROR__NO_SESSIONS_LEFT]: `No sessions left on this card`,
     [SAFECARD_ERROR__PLAN_INACTIVE]: `Plan is not on sale`,
     [SAFECARD_ERROR__REFUND_NOT_ALLOWED]: `Refund only allowed when the card is used up or the merchant has closed or gone inactive`,
+    [SAFECARD_ERROR__UNSUPPORTED_MINT]: `This token is not supported (the escrow did not receive the full price)`,
   };
 }
 

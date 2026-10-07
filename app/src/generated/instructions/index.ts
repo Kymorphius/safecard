@@ -7,9 +7,13 @@
  */
 
 export * from "./buyCard";
+export * from "./buyTokenCard";
 export * from "./checkIn";
+export * from "./checkInToken";
 export * from "./closeMerchant";
 export * from "./createPlan";
+export * from "./createTokenPlan";
 export * from "./refund";
+export * from "./refundToken";
 export * from "./registerMerchant";
 export * from "./updateMerchant";

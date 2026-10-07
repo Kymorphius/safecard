@@ -36,45 +36,75 @@ import {
 import {
   getCardCodec,
   getMerchantCodec,
+  getMerchantTokenStatsCodec,
   getPlanCodec,
+  getTokenCardCodec,
+  getTokenPlanCodec,
   type Card,
   type CardArgs,
   type Merchant,
   type MerchantArgs,
+  type MerchantTokenStats,
+  type MerchantTokenStatsArgs,
   type Plan,
   type PlanArgs,
+  type TokenCard,
+  type TokenCardArgs,
+  type TokenPlan,
+  type TokenPlanArgs,
 } from "../accounts";
 import {
   getBuyCardInstructionAsync,
+  getBuyTokenCardInstructionAsync,
   getCheckInInstruction,
+  getCheckInTokenInstructionAsync,
   getCloseMerchantInstructionAsync,
   getCreatePlanInstructionAsync,
+  getCreateTokenPlanInstructionAsync,
   getRefundInstruction,
+  getRefundTokenInstructionAsync,
   getRegisterMerchantInstructionAsync,
   getUpdateMerchantInstructionAsync,
   parseBuyCardInstruction,
+  parseBuyTokenCardInstruction,
   parseCheckInInstruction,
+  parseCheckInTokenInstruction,
   parseCloseMerchantInstruction,
   parseCreatePlanInstruction,
+  parseCreateTokenPlanInstruction,
   parseRefundInstruction,
+  parseRefundTokenInstruction,
   parseRegisterMerchantInstruction,
   parseUpdateMerchantInstruction,
   type BuyCardAsyncInput,
+  type BuyTokenCardAsyncInput,
   type CheckInInput,
+  type CheckInTokenAsyncInput,
   type CloseMerchantAsyncInput,
   type CreatePlanAsyncInput,
+  type CreateTokenPlanAsyncInput,
   type ParsedBuyCardInstruction,
+  type ParsedBuyTokenCardInstruction,
   type ParsedCheckInInstruction,
+  type ParsedCheckInTokenInstruction,
   type ParsedCloseMerchantInstruction,
   type ParsedCreatePlanInstruction,
+  type ParsedCreateTokenPlanInstruction,
   type ParsedRefundInstruction,
+  type ParsedRefundTokenInstruction,
   type ParsedRegisterMerchantInstruction,
   type ParsedUpdateMerchantInstruction,
   type RefundInput,
+  type RefundTokenAsyncInput,
   type RegisterMerchantAsyncInput,
   type UpdateMerchantAsyncInput,
 } from "../instructions";
-import { findCardPda, findMerchantPda } from "../pdas";
+import {
+  findCardPda,
+  findMerchantPda,
+  findStatsPda,
+  findTokenCardPda,
+} from "../pdas";
 
 export const SAFECARD_PROGRAM_ADDRESS =
   "5NpKPE9MWxrgDB4NgvTEp2MgQ84uYhENy3M7Tc9UTSW9" as Address<"5NpKPE9MWxrgDB4NgvTEp2MgQ84uYhENy3M7Tc9UTSW9">;
@@ -82,7 +112,10 @@ export const SAFECARD_PROGRAM_ADDRESS =
 export enum SafecardAccount {
   Card,
   Merchant,
+  MerchantTokenStats,
   Plan,
+  TokenCard,
+  TokenPlan,
 }
 
 export function identifySafecardAccount(
@@ -115,12 +148,45 @@ export function identifySafecardAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([134, 84, 170, 139, 77, 47, 79, 243]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardAccount.MerchantTokenStats;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([161, 231, 251, 119, 2, 12, 162, 2]),
       ),
       0,
     )
   ) {
     return SafecardAccount.Plan;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([151, 128, 141, 120, 35, 158, 180, 25]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardAccount.TokenCard;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([137, 53, 36, 193, 24, 3, 221, 212]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardAccount.TokenPlan;
   }
   throw new SolanaError(
     SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT,
@@ -190,10 +256,14 @@ export function identifySafecardEvent(
 
 export enum SafecardInstruction {
   BuyCard,
+  BuyTokenCard,
   CheckIn,
+  CheckInToken,
   CloseMerchant,
   CreatePlan,
+  CreateTokenPlan,
   Refund,
+  RefundToken,
   RegisterMerchant,
   UpdateMerchant,
 }
@@ -217,12 +287,34 @@ export function identifySafecardInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([238, 15, 17, 201, 101, 131, 187, 62]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardInstruction.BuyTokenCard;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([209, 253, 4, 217, 250, 241, 207, 50]),
       ),
       0,
     )
   ) {
     return SafecardInstruction.CheckIn;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([206, 173, 132, 27, 89, 138, 76, 44]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardInstruction.CheckInToken;
   }
   if (
     containsBytes(
@@ -250,12 +342,34 @@ export function identifySafecardInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([8, 172, 128, 135, 190, 131, 119, 16]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardInstruction.CreateTokenPlan;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([2, 96, 183, 251, 63, 208, 46, 46]),
       ),
       0,
     )
   ) {
     return SafecardInstruction.Refund;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([198, 194, 93, 209, 12, 211, 46, 174]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardInstruction.RefundToken;
   }
   if (
     containsBytes(
@@ -292,8 +406,14 @@ export type ParsedSafecardInstruction<
       instructionType: SafecardInstruction.BuyCard;
     } & ParsedBuyCardInstruction<TProgram>)
   | ({
+      instructionType: SafecardInstruction.BuyTokenCard;
+    } & ParsedBuyTokenCardInstruction<TProgram>)
+  | ({
       instructionType: SafecardInstruction.CheckIn;
     } & ParsedCheckInInstruction<TProgram>)
+  | ({
+      instructionType: SafecardInstruction.CheckInToken;
+    } & ParsedCheckInTokenInstruction<TProgram>)
   | ({
       instructionType: SafecardInstruction.CloseMerchant;
     } & ParsedCloseMerchantInstruction<TProgram>)
@@ -301,8 +421,14 @@ export type ParsedSafecardInstruction<
       instructionType: SafecardInstruction.CreatePlan;
     } & ParsedCreatePlanInstruction<TProgram>)
   | ({
+      instructionType: SafecardInstruction.CreateTokenPlan;
+    } & ParsedCreateTokenPlanInstruction<TProgram>)
+  | ({
       instructionType: SafecardInstruction.Refund;
     } & ParsedRefundInstruction<TProgram>)
+  | ({
+      instructionType: SafecardInstruction.RefundToken;
+    } & ParsedRefundTokenInstruction<TProgram>)
   | ({
       instructionType: SafecardInstruction.RegisterMerchant;
     } & ParsedRegisterMerchantInstruction<TProgram>)
@@ -322,11 +448,25 @@ export function parseSafecardInstruction<TProgram extends string>(
         ...parseBuyCardInstruction(instruction),
       };
     }
+    case SafecardInstruction.BuyTokenCard: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SafecardInstruction.BuyTokenCard,
+        ...parseBuyTokenCardInstruction(instruction),
+      };
+    }
     case SafecardInstruction.CheckIn: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: SafecardInstruction.CheckIn,
         ...parseCheckInInstruction(instruction),
+      };
+    }
+    case SafecardInstruction.CheckInToken: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SafecardInstruction.CheckInToken,
+        ...parseCheckInTokenInstruction(instruction),
       };
     }
     case SafecardInstruction.CloseMerchant: {
@@ -343,11 +483,25 @@ export function parseSafecardInstruction<TProgram extends string>(
         ...parseCreatePlanInstruction(instruction),
       };
     }
+    case SafecardInstruction.CreateTokenPlan: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SafecardInstruction.CreateTokenPlan,
+        ...parseCreateTokenPlanInstruction(instruction),
+      };
+    }
     case SafecardInstruction.Refund: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: SafecardInstruction.Refund,
         ...parseRefundInstruction(instruction),
+      };
+    }
+    case SafecardInstruction.RefundToken: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SafecardInstruction.RefundToken,
+        ...parseRefundTokenInstruction(instruction),
       };
     }
     case SafecardInstruction.RegisterMerchant: {
@@ -385,16 +539,30 @@ export type SafecardPluginAccounts = {
   card: ReturnType<typeof getCardCodec> & SelfFetchFunctions<CardArgs, Card>;
   merchant: ReturnType<typeof getMerchantCodec> &
     SelfFetchFunctions<MerchantArgs, Merchant>;
+  merchantTokenStats: ReturnType<typeof getMerchantTokenStatsCodec> &
+    SelfFetchFunctions<MerchantTokenStatsArgs, MerchantTokenStats>;
   plan: ReturnType<typeof getPlanCodec> & SelfFetchFunctions<PlanArgs, Plan>;
+  tokenCard: ReturnType<typeof getTokenCardCodec> &
+    SelfFetchFunctions<TokenCardArgs, TokenCard>;
+  tokenPlan: ReturnType<typeof getTokenPlanCodec> &
+    SelfFetchFunctions<TokenPlanArgs, TokenPlan>;
 };
 
 export type SafecardPluginInstructions = {
   buyCard: (
     input: BuyCardAsyncInput,
   ) => ReturnType<typeof getBuyCardInstructionAsync> & SelfPlanAndSendFunctions;
+  buyTokenCard: (
+    input: BuyTokenCardAsyncInput,
+  ) => ReturnType<typeof getBuyTokenCardInstructionAsync> &
+    SelfPlanAndSendFunctions;
   checkIn: (
     input: CheckInInput,
   ) => ReturnType<typeof getCheckInInstruction> & SelfPlanAndSendFunctions;
+  checkInToken: (
+    input: CheckInTokenAsyncInput,
+  ) => ReturnType<typeof getCheckInTokenInstructionAsync> &
+    SelfPlanAndSendFunctions;
   closeMerchant: (
     input: CloseMerchantAsyncInput,
   ) => ReturnType<typeof getCloseMerchantInstructionAsync> &
@@ -403,9 +571,17 @@ export type SafecardPluginInstructions = {
     input: CreatePlanAsyncInput,
   ) => ReturnType<typeof getCreatePlanInstructionAsync> &
     SelfPlanAndSendFunctions;
+  createTokenPlan: (
+    input: CreateTokenPlanAsyncInput,
+  ) => ReturnType<typeof getCreateTokenPlanInstructionAsync> &
+    SelfPlanAndSendFunctions;
   refund: (
     input: RefundInput,
   ) => ReturnType<typeof getRefundInstruction> & SelfPlanAndSendFunctions;
+  refundToken: (
+    input: RefundTokenAsyncInput,
+  ) => ReturnType<typeof getRefundTokenInstructionAsync> &
+    SelfPlanAndSendFunctions;
   registerMerchant: (
     input: RegisterMerchantAsyncInput,
   ) => ReturnType<typeof getRegisterMerchantInstructionAsync> &
@@ -418,6 +594,8 @@ export type SafecardPluginInstructions = {
 
 export type SafecardPluginPdas = {
   card: typeof findCardPda;
+  stats: typeof findStatsPda;
+  tokenCard: typeof findTokenCardPda;
   merchant: typeof findMerchantPda;
 };
 
@@ -436,7 +614,13 @@ export function safecardProgram() {
         accounts: {
           card: addSelfFetchFunctions(client, getCardCodec()),
           merchant: addSelfFetchFunctions(client, getMerchantCodec()),
+          merchantTokenStats: addSelfFetchFunctions(
+            client,
+            getMerchantTokenStatsCodec(),
+          ),
           plan: addSelfFetchFunctions(client, getPlanCodec()),
+          tokenCard: addSelfFetchFunctions(client, getTokenCardCodec()),
+          tokenPlan: addSelfFetchFunctions(client, getTokenPlanCodec()),
         },
         instructions: {
           buyCard: (input) =>
@@ -444,8 +628,18 @@ export function safecardProgram() {
               client,
               getBuyCardInstructionAsync(input),
             ),
+          buyTokenCard: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getBuyTokenCardInstructionAsync(input),
+            ),
           checkIn: (input) =>
             addSelfPlanAndSendFunctions(client, getCheckInInstruction(input)),
+          checkInToken: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCheckInTokenInstructionAsync(input),
+            ),
           closeMerchant: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -456,8 +650,18 @@ export function safecardProgram() {
               client,
               getCreatePlanInstructionAsync(input),
             ),
+          createTokenPlan: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateTokenPlanInstructionAsync(input),
+            ),
           refund: (input) =>
             addSelfPlanAndSendFunctions(client, getRefundInstruction(input)),
+          refundToken: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRefundTokenInstructionAsync(input),
+            ),
           registerMerchant: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -469,7 +673,12 @@ export function safecardProgram() {
               getUpdateMerchantInstructionAsync(input),
             ),
         },
-        pdas: { card: findCardPda, merchant: findMerchantPda },
+        pdas: {
+          card: findCardPda,
+          stats: findStatsPda,
+          tokenCard: findTokenCardPda,
+          merchant: findMerchantPda,
+        },
         identifyAccount: identifySafecardAccount,
         identifyInstruction: identifySafecardInstruction,
         parseInstruction: parseSafecardInstruction,

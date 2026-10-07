@@ -74,7 +74,10 @@ export type Badge = {
 const REGULAR_TARGET = 5;
 
 /** 根据当前持有的卡和链上历史计算用户徽章 */
-export function customerBadges(cards: Card[], history: History | undefined): Badge[] {
+export function customerBadges(
+  cards: Pick<Card, 'totalSessions' | 'remainingSessions'>[],
+  history: History | undefined,
+): Badge[] {
   const usedOnCards = cards.reduce((n, c) => n + (c.totalSessions - c.remainingSessions), 0);
   // 历史只回溯最近若干笔，和当前卡片的已用次数取较大值
   const totalCheckIns = Math.max(history?.checkIns.length ?? 0, usedOnCards);

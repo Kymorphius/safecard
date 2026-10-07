@@ -26,7 +26,7 @@ const dict = {
   'common.loading': ['Loading on-chain data…', '读取链上数据…'],
   'common.loadFailed': ['Failed to load. Please refresh.', '读取失败，请刷新重试'],
   'common.connectFirst': ['Connect your wallet first.', '请先连接钱包。'],
-  'common.sessionsPrice': ['{n} sessions · {price} SOL', '{n} 次 · {price} SOL'],
+  'common.sessionsPrice': ['{n} sessions · {price}', '{n} 次 · {price}'],
 
   // home
   'home.eyebrow': ['Prepaid escrow on Solana', 'Solana 链上预付托管'],
@@ -50,7 +50,7 @@ const dict = {
   'home.merchantsSub': ['Every number below is read straight from the chain.', '以下数据全部直接读取自链上，公开可查。'],
   'home.noMerchants.before': ['No merchants yet. Go to ', '还没有商家。去 '],
   'home.noMerchants.after': [' to register the first one.', ' 注册第一家店吧。'],
-  'home.inEscrow': ['{amount} SOL in escrow', '托管中 {amount} SOL'],
+  'home.inEscrow': ['{amount} in escrow', '托管中 {amount}'],
   'home.sold': ['{n} sold', '售卡 {n}'],
   'home.refunds': ['{n} refunds', '退款 {n}'],
 
@@ -83,11 +83,11 @@ const dict = {
   'card.used': ['Used {used} / {total}', '已用 {used} / {total} 次'],
   'card.left': ['{n} left', '剩 {n} 次'],
   'card.checkIn': ['Check in', '签到消费'],
-  'card.checkInHint': ['Releases {amount} SOL to the merchant', '放 {amount} SOL 给商家'],
+  'card.checkInHint': ['Releases {amount} to the merchant', '放 {amount} 给商家'],
   'card.sessions': ['Sessions', '次数'],
   'card.refundBlocked': ['Merchant is still active, so refunds aren’t available yet', '商家正常营业中，不能退款'],
   'card.close': ['Close card (reclaim rent)', '关闭卡片（退还租金）'],
-  'card.refund': ['Refund {amount} SOL', '退回 {amount} SOL'],
+  'card.refund': ['Refund {amount}', '退回 {amount}'],
 
   // merchant dashboard
   'md.connectFirst': ['Connect the merchant wallet first.', '请先连接商家钱包。'],
@@ -130,7 +130,9 @@ const dict = {
   'md.cancel': ['Cancel', '取消'],
   'md.planName': ['Plan name', '套餐名'],
   'md.defaultPlanName': ['12 PT sessions', '12 次私教课'],
-  'md.price': ['Total price (SOL)', '总价 SOL'],
+  'md.price': ['Total price', '总价'],
+  'md.currency': ['Currency', '币种'],
+  'md.testToken': ['Test token issued by SafeCard on devnet', 'SafeCard 在 devnet 上发行的测试代币'],
   'md.sessions': ['Sessions', '次数'],
   'md.addPlan': ['Add plan', '上架套餐'],
 
@@ -141,7 +143,7 @@ const dict = {
   'store.trackRecord': ['On-chain track record', '链上信用'],
   'store.plans': ['Plans', '套餐'],
   'store.noPlans': ['This merchant has no plans yet', '商家还没有上架套餐'],
-  'store.perSession': ['(~{amount} SOL each)', '（每次约 {amount} SOL）'],
+  'store.perSession': ['(~{amount} each)', '（每次约 {amount}）'],
   'store.owned': ['Owned', '已持有'],
   'store.connectToBuy': ['Connect wallet to buy', '连接钱包后购买'],
   'store.buy': ['Buy card', '买卡'],
@@ -172,6 +174,10 @@ const dict = {
   'badge.noRefunds.desc': ['Has sold cards and never defaulted on a customer', '卖出过卡，且从未因违约让顾客退款'],
 
   // errors
+  'err.3012': [
+    'This wallet has no account for this token yet. Get some of the token first.',
+    '这个钱包还没有该代币的账户，请先获取一些该代币。',
+  ],
   'err.6000': ['Name is too long (max 32 bytes)', '名称太长（最多 32 字节）'],
   'err.6001': ['Timeout must be greater than 0', '超时时间必须大于 0'],
   'err.6002': ['A plan needs at least 1 session and at least 1 lamport per session', '套餐至少 1 次，且单价不能低于 1 lamport/次'],
@@ -180,6 +186,7 @@ const dict = {
   'err.6005': ['This card has no sessions left', '这张卡已经用完了'],
   'err.6006': ['The merchant is still active, so refunds aren’t available yet', '商家仍在正常营业，暂时不能退款'],
   'err.6007': ['Arithmetic overflow', '数值溢出'],
+  'err.6008': ['This token is not supported', '不支持这种代币'],
   'err.2001': ['Not authorized (account mismatch)', '没有权限（账户不匹配）'],
   'err.rejected': ['You cancelled the signature', '你取消了签名'],
   'err.expired': [

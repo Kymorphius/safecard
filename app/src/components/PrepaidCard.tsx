@@ -9,14 +9,15 @@ export function PrepaidCard({
   planName,
   used,
   total,
-  escrowSol,
+  escrowLabel,
   dimmed = false,
 }: {
   merchantName: string;
   planName: string;
   used: number;
   total: number;
-  escrowSol: string;
+  /** 带单位的托管金额，例如 "0.08 SOL"、"25 USDC" */
+  escrowLabel: string;
   dimmed?: boolean;
 }) {
   const { t } = useI18n();
@@ -67,7 +68,7 @@ export function PrepaidCard({
           <div className="mt-3 flex items-end justify-between">
             <div>
               <div className="text-[10px] tracking-[0.14em] text-white/45 uppercase">{t('card.escrow')}</div>
-              <div className="mono num mt-0.5 text-[15px]">{escrowSol} SOL</div>
+              <div className="mono num mt-0.5 text-[15px]">{escrowLabel}</div>
             </div>
             <div className="text-right">
               <div className="text-[10px] tracking-[0.14em] text-white/45 uppercase">{t('card.sessions')}</div>

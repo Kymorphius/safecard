@@ -10,24 +10,21 @@ import {
   fetchMaybeMerchant,
   findMerchantPda,
   getCloseMerchantInstructionAsync,
-  getCreatePlanInstruction,
   getRegisterMerchantInstructionAsync,
   getUpdateMerchantInstructionAsync,
 } from '@/generated';
 import {
-  fetchCardsByMerchant,
-  fetchPlans,
-  findPlanPda,
-  formatSol,
   shortAddr,
-  solToLamports,
   type WithAddress,
 } from '@/lib/solana';
 import { useApp, usePoll, useSend } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
+import { createPlanIx } from '@/lib/actions';
+import { type Currency, CURRENCIES, SOL, formatMoney, parseAmount } from '@/lib/currency';
+import { fetchTokenTotals, fetchUiCardsByMerchant, fetchUiPlans, toTokenTotals } from '@/lib/model';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
 import { TxStatus } from './TxStatus';
-import { EmptyState, PageHeader, Section } from './ui';
+import { CurrencyTag, EmptyState, PageHeader, Section } from './ui';
 
 const TIMEOUT_PRESETS = [
   { label: 'md.preset60', value: 60 },
@@ -116,8 +113,9 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; refresh: () => void }) {
   const { client } = useApp();
   const { t } = useI18n();
-  const plans = usePoll(`plans:${merchant.address}`, () => fetchPlans(client.rpc, merchant.address));
-  const cards = usePoll(`mcards:${merchant.address}`, () => fetchCardsByMerchant(client.rpc, merchant.address));
+  const plans = usePoll(`plans:${merchant.address}`, () => fetchUiPlans(client.rpc, merchant.address));
+  const cards = usePoll(`mcards:${merchant.address}`, () => fetchUiCardsByMerchant(client.rpc, merchant.address));
+  const tokenStats = usePoll(`tstats:${merchant.address}`, () => fetchTokenTotals(client.rpc, merchant.address));
   const [origin, setOrigin] = useState('');
   useEffect(() => setOrigin(window.location.origin), []);
   const checkInUrl = `${origin}/m/${merchant.address}`;
@@ -129,6 +127,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
     refresh();
     plans.refresh();
     cards.refresh();
+    tokenStats.refresh();
   };
 
   const closeShop = async () => {
@@ -148,7 +147,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
         right={<StatusBadge merchant={merchant} />}
       />
 
-      <MerchantStats merchant={merchant} />
+      <MerchantStats merchant={merchant} tokenTotals={toTokenTotals(tokenStats.data ?? [])} />
 
       <div className="grid gap-6 md:grid-cols-[1fr_260px]">
         <Section title={t('md.plans')}>
@@ -157,9 +156,12 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
               <ul className="divide-y divide-line">
                 {plans.data.map((p) => (
                   <li key={p.address} className="flex items-center justify-between px-5 py-3.5 text-sm">
-                    <span className="font-medium">{p.name}</span>
+                    <span className="flex items-center gap-2 font-medium">
+                      {p.name}
+                      <CurrencyTag symbol={p.currency.symbol} />
+                    </span>
                     <span className="num text-muted">
-                      {t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}
+                      {t('common.sessionsPrice', { n: p.sessions, price: formatMoney(p.price, p.currency) })}
                     </span>
                   </li>
                 ))}
@@ -214,7 +216,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
                       {c.remainingSessions}
                       <span className="text-subtle"> / {c.totalSessions}</span>
                     </td>
-                    <td className="num px-5 py-3 text-right">{formatSol(c.escrow)} SOL</td>
+                    <td className="num px-5 py-3 text-right">{formatMoney(c.escrow, c.currency)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -304,35 +306,58 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
   const { client } = useApp();
   const send = useSend();
   const { t } = useI18n();
+  const [currency, setCurrency] = useState<Currency>(SOL);
   const [name, setName] = useState<string>(t('md.defaultPlanName'));
   const [price, setPrice] = useState('0.12');
   // 输入框内容用字符串保存，清空时不会变成 0
   const [sessions, setSessions] = useState('12');
   const sessionsNum = Number(sessions);
   const sessionsValid = Number.isInteger(sessionsNum) && sessionsNum >= 1 && sessionsNum <= 1000;
+  const priceUnits = parseAmount(price, currency);
+  // 合约要求每次至少 1 个最小单位
+  const priceValid = priceUnits !== null && sessionsValid && priceUnits >= BigInt(sessionsNum);
+
+  const pickCurrency = (c: Currency) => {
+    setCurrency(c);
+    // 切换币种时给一个合理的默认价格
+    setPrice(c.mint ? '25' : '0.12');
+  };
 
   const submit = async () => {
-    const plan = await findPlanPda(merchant.address, merchant.planCount);
-    const ix = getCreatePlanInstruction({
-      authority: client.identity,
-      merchant: merchant.address,
-      plan,
-      name,
-      price: solToLamports(price),
-      sessions: sessionsNum,
-    });
+    const ix = await createPlanIx(client.identity, merchant, currency, name, priceUnits!, sessionsNum);
     send.dispatchAsync([ix]).then(onDone, () => {});
   };
 
   return (
     <div className="space-y-3">
+      <div>
+        <label className="label">{t('md.currency')}</label>
+        <div className="flex flex-wrap items-center gap-2">
+          {CURRENCIES.map((c) => (
+            <button
+              key={c.symbol}
+              onClick={() => pickCurrency(c)}
+              className={`mono rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                currency.symbol === c.symbol
+                  ? 'border-accent bg-accent-soft text-fg'
+                  : 'border-line-strong text-muted hover:text-fg'
+              }`}
+            >
+              {c.symbol}
+            </button>
+          ))}
+          {currency.test && <span className="text-[11px] text-subtle">{t('md.testToken')}</span>}
+        </div>
+      </div>
       <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
         <div>
           <label className="label">{t('md.planName')}</label>
           <input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
-          <label className="label">{t('md.price')}</label>
+          <label className="label">
+            {t('md.price')} ({currency.symbol})
+          </label>
           <input className="input num" value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} />
         </div>
         <div>
@@ -346,11 +371,7 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
           />
         </div>
       </div>
-      <button
-        className="btn-secondary"
-        disabled={!name || !(Number(price) > 0) || !sessionsValid || send.isRunning}
-        onClick={submit}
-      >
+      <button className="btn-secondary" disabled={!name || !priceValid || send.isRunning} onClick={submit}>
         <Plus size={14} /> {t('md.addPlan')}
       </button>
       <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />

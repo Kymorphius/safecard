@@ -45,7 +45,7 @@ export function Home() {
               planName={t('md.defaultPlanName')}
               used={4}
               total={12}
-              escrowSol="0.08"
+              escrowLabel="0.08 SOL"
             />
           </div>
         </div>

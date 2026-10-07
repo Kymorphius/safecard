@@ -51,3 +51,12 @@ export function Section({
     </section>
   );
 }
+
+/** 币种标签，例如 USDC */
+export function CurrencyTag({ symbol }: { symbol: string }) {
+  return (
+    <span className="mono rounded-md border border-line-strong px-1.5 py-0.5 text-[10px] tracking-wide text-muted">
+      {symbol}
+    </span>
+  );
+}

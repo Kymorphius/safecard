@@ -2,8 +2,11 @@
 
 import { type Address, isAddress } from '@solana/kit';
 import { ArrowUpRight, Lock } from 'lucide-react';
-import { type Merchant, fetchMaybeMerchant, getBuyCardInstructionAsync } from '@/generated';
-import { explorerUrl, fetchCardsByOwner, fetchPlans, formatSol, shortAddr, type WithAddress } from '@/lib/solana';
+import { type Merchant, fetchMaybeMerchant } from '@/generated';
+import { buyIx } from '@/lib/actions';
+import { formatMoney } from '@/lib/currency';
+import { type UiPlan, fetchTokenTotals, fetchUiCardsByOwner, fetchUiPlans, toTokenTotals } from '@/lib/model';
+import { explorerUrl, shortAddr, type WithAddress } from '@/lib/solana';
 import { useApp, usePoll, useSend } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
@@ -11,7 +14,7 @@ import { MerchantStats, StatusBadge } from './MerchantStatus';
 import { merchantHasNoRefunds } from '@/lib/badges';
 import { NoRefundsPill } from './Badges';
 import { TxStatus } from './TxStatus';
-import { EmptyState, PageHeader, Section } from './ui';
+import { CurrencyTag, EmptyState, PageHeader, Section } from './ui';
 
 export function MerchantPublic({ merchantAddress }: { merchantAddress: string }) {
   const { client, wallet } = useApp();
@@ -24,14 +27,16 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
     const m = await fetchMaybeMerchant(client.rpc, addr, { commitment: 'confirmed' });
     return m.exists ? ({ ...m.data, address: m.address } as WithAddress<Merchant>) : null;
   }, 4000);
-  const plans = usePoll(valid ? `plans:${addr}` : null, () => fetchPlans(client.rpc, addr));
+  const plans = usePoll(valid ? `plans:${addr}` : null, () => fetchUiPlans(client.rpc, addr));
+  const tokenStats = usePoll(valid ? `tstats:${addr}` : null, () => fetchTokenTotals(client.rpc, addr), 8000);
   const myCards = usePoll(wallet && valid ? `cards:${wallet}:${addr}` : null, async () =>
-    (await fetchCardsByOwner(client.rpc, wallet!)).filter((c) => c.merchant === addr), 4000);
+    (await fetchUiCardsByOwner(client.rpc, wallet!)).filter((c) => c.merchant === addr), 4000);
 
   const refreshAll = () => {
     merchantQ.refresh();
     plans.refresh();
     myCards.refresh();
+    tokenStats.refresh();
   };
 
   if (!valid) return <EmptyState>{t('store.invalid')}</EmptyState>;
@@ -39,8 +44,8 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
   const merchant = merchantQ.data;
   if (!merchant) return <EmptyState>{t('store.notFound')}</EmptyState>;
 
-  const buy = async (plan: Address) => {
-    const ix = await getBuyCardInstructionAsync({ buyer: client.identity, merchant: addr, plan });
+  const buy = async (plan: UiPlan) => {
+    const ix = await buyIx(client.identity, plan);
     send.dispatchAsync([ix]).then(refreshAll, () => {});
   };
   const ownedPlans = new Set(myCards.data?.map((c) => c.plan));
@@ -85,7 +90,7 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
       )}
 
       <Section title={t('store.trackRecord')}>
-        <MerchantStats merchant={merchant} />
+        <MerchantStats merchant={merchant} tokenTotals={toTokenTotals(tokenStats.data ?? [])} />
       </Section>
 
       <Section title={t('store.plans')}>
@@ -96,16 +101,19 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
             {plans.data.map((p) => (
               <div key={p.address} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
                 <div>
-                  <div className="text-[15px] font-medium">{p.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[15px] font-medium">{p.name}</span>
+                    <CurrencyTag symbol={p.currency.symbol} />
+                  </div>
                   <div className="num mt-0.5 text-xs text-muted">
-                    {t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}{' '}
-                    {t('store.perSession', { amount: formatSol(p.price / BigInt(p.sessions)) })}
+                    {t('common.sessionsPrice', { n: p.sessions, price: formatMoney(p.price, p.currency) })}{' '}
+                    {t('store.perSession', { amount: formatMoney(p.price / BigInt(p.sessions), p.currency) })}
                   </div>
                 </div>
                 <button
                   className={ownedPlans.has(p.address) ? 'btn-secondary' : 'btn'}
                   disabled={!wallet || merchant.closed || ownedPlans.has(p.address) || send.isRunning}
-                  onClick={() => buy(p.address)}
+                  onClick={() => buy(p)}
                 >
                   {ownedPlans.has(p.address) ? t('store.owned') : !wallet ? t('store.connectToBuy') : t('store.buy')}
                 </button>

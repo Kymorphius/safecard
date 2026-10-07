@@ -17,3 +17,15 @@ export const MERCHANT_SEED: ReadonlyUint8Array = new Uint8Array([
 export const PLAN_SEED: ReadonlyUint8Array = new Uint8Array([
   112, 108, 97, 110,
 ]);
+
+export const TOKEN_CARD_SEED: ReadonlyUint8Array = new Uint8Array([
+  116, 111, 107, 101, 110, 95, 99, 97, 114, 100,
+]);
+
+export const TOKEN_PLAN_SEED: ReadonlyUint8Array = new Uint8Array([
+  116, 111, 107, 101, 110, 95, 112, 108, 97, 110,
+]);
+
+export const TOKEN_STATS_SEED: ReadonlyUint8Array = new Uint8Array([
+  116, 111, 107, 101, 110, 95, 115, 116, 97, 116, 115,
+]);

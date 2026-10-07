@@ -13,14 +13,23 @@ import {
 import {
   type Card,
   type Merchant,
+  type MerchantTokenStats,
   type Plan,
+  type TokenCard,
+  type TokenPlan,
   CARD_DISCRIMINATOR,
   MERCHANT_DISCRIMINATOR,
+  MERCHANT_TOKEN_STATS_DISCRIMINATOR,
   PLAN_DISCRIMINATOR,
   SAFECARD_PROGRAM_ADDRESS,
+  TOKEN_CARD_DISCRIMINATOR,
+  TOKEN_PLAN_DISCRIMINATOR,
   getCardDecoder,
   getMerchantDecoder,
+  getMerchantTokenStatsDecoder,
   getPlanDecoder,
+  getTokenCardDecoder,
+  getTokenPlanDecoder,
 } from '@/generated';
 
 export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? 'https://api.devnet.solana.com';
@@ -71,10 +80,32 @@ export const fetchCardsByOwner = (rpc: AnyRpc, owner: Address) =>
 export const fetchCardsByMerchant = (rpc: AnyRpc, merchant: Address) =>
   fetchAllOfType<Card>(rpc, CARD_DISCRIMINATOR, getCardDecoder(), [{ offset: 40, address: merchant }]);
 
-export async function findPlanPda(merchant: Address, planId: bigint): Promise<Address> {
+export const fetchTokenPlans = (rpc: AnyRpc, merchant: Address) =>
+  fetchAllOfType<TokenPlan>(rpc, TOKEN_PLAN_DISCRIMINATOR, getTokenPlanDecoder(), [{ offset: 8, address: merchant }]);
+
+export const fetchTokenCardsByOwner = (rpc: AnyRpc, owner: Address) =>
+  fetchAllOfType<TokenCard>(rpc, TOKEN_CARD_DISCRIMINATOR, getTokenCardDecoder(), [{ offset: 8, address: owner }]);
+
+export const fetchTokenCardsByMerchant = (rpc: AnyRpc, merchant: Address) =>
+  fetchAllOfType<TokenCard>(rpc, TOKEN_CARD_DISCRIMINATOR, getTokenCardDecoder(), [{ offset: 40, address: merchant }]);
+
+/** 不传 merchant 时返回所有商家的代币统计（首页用） */
+export const fetchTokenStats = (rpc: AnyRpc, merchant?: Address) =>
+  fetchAllOfType<MerchantTokenStats>(
+    rpc,
+    MERCHANT_TOKEN_STATS_DISCRIMINATOR,
+    getMerchantTokenStatsDecoder(),
+    merchant ? [{ offset: 8, address: merchant }] : [],
+  );
+
+export async function findPlanPda(
+  merchant: Address,
+  planId: bigint,
+  kind: 'sol' | 'token' = 'sol',
+): Promise<Address> {
   const [pda] = await getProgramDerivedAddress({
     programAddress: SAFECARD_PROGRAM_ADDRESS,
-    seeds: ['plan', getAddressEncoder().encode(merchant), getU64Encoder().encode(planId)],
+    seeds: [kind === 'sol' ? 'plan' : 'token_plan', getAddressEncoder().encode(merchant), getU64Encoder().encode(planId)],
   });
   return pda;
 }
@@ -89,16 +120,6 @@ export function secondsUntilDefault(m: Merchant, nowSec: number): number {
   if (m.closed) return 0;
   const left = Number(m.lastActiveTs + m.inactivityTimeout) - nowSec + 1;
   return Math.max(0, left);
-}
-
-const LAMPORTS_PER_SOL = 1_000_000_000;
-export function formatSol(lamports: bigint | number, digits = 4): string {
-  const n = Number(lamports) / LAMPORTS_PER_SOL;
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
-}
-export function solToLamports(sol: string): bigint {
-  const [whole, frac = ''] = sol.trim().split('.');
-  return BigInt(whole || '0') * BigInt(LAMPORTS_PER_SOL) + BigInt((frac + '000000000').slice(0, 9));
 }
 
 export function shortAddr(a: string): string {

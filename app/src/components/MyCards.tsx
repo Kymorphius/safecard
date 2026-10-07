@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { type Merchant, type Plan, fetchAllMaybeMerchant, fetchAllMaybePlan } from '@/generated';
-import { fetchCardsByOwner, type WithAddress } from '@/lib/solana';
+import { type Merchant, fetchAllMaybeMerchant } from '@/generated';
+import { fetchUiCardsByOwner, fetchUiPlans } from '@/lib/model';
+import type { WithAddress } from '@/lib/solana';
 import { customerBadges, fetchHistory } from '@/lib/badges';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
@@ -14,16 +15,15 @@ export function MyCards() {
   const { client, wallet } = useApp();
   const { t } = useI18n();
   const q = usePoll(wallet ? `mycards:${wallet}` : null, async () => {
-    const cards = await fetchCardsByOwner(client.rpc, wallet!);
+    const cards = await fetchUiCardsByOwner(client.rpc, wallet!);
     const merchantAddrs = [...new Set(cards.map((c) => c.merchant))];
     const [merchants, plans] = await Promise.all([
       fetchAllMaybeMerchant(client.rpc, merchantAddrs),
-      fetchAllMaybePlan(client.rpc, cards.map((c) => c.plan)),
+      Promise.all(merchantAddrs.map((m) => fetchUiPlans(client.rpc, m))),
     ]);
     const mMap = new Map<string, WithAddress<Merchant>>();
     merchants.forEach((m) => m.exists && mMap.set(m.address, { ...m.data, address: m.address }));
-    const pMap = new Map<string, Plan>();
-    plans.forEach((p) => p.exists && pMap.set(p.address, p.data));
+    const pMap = new Map(plans.flat().map((p) => [p.address as string, p]));
     return { cards, mMap, pMap };
   }, 4000);
   // 链上历史较重，只在进入页面时读一次，不轮询

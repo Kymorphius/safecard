@@ -1,9 +1,11 @@
 'use client';
 
-import { type Address } from '@solana/kit';
 import { Check, Undo2 } from 'lucide-react';
-import { type Card, type Merchant, getCheckInInstruction, getRefundInstruction } from '@/generated';
-import { type WithAddress, formatSol, isDefaulted } from '@/lib/solana';
+import type { Merchant } from '@/generated';
+import { checkInIx, refundIx } from '@/lib/actions';
+import { formatMoney } from '@/lib/currency';
+import type { UiCard } from '@/lib/model';
+import { type WithAddress, isDefaulted } from '@/lib/solana';
 import { useApp, useNow, useSend } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { PrepaidCard } from './PrepaidCard';
@@ -16,7 +18,7 @@ export function CardView({
   planName,
   onChange,
 }: {
-  card: WithAddress<Card>;
+  card: UiCard;
   merchant: WithAddress<Merchant>;
   planName?: string;
   onChange: () => void;
@@ -30,18 +32,12 @@ export function CardView({
   const defaulted = isDefaulted(merchant, now);
   const canRefund = card.remainingSessions === 0 || defaulted;
   const canCheckIn = card.remainingSessions > 0 && !merchant.closed;
-  const nextRelease = formatSol(card.remainingSessions === 1 ? card.escrow : card.perSession);
+  const money = (n: bigint) => formatMoney(n, card.currency);
+  const nextRelease = money(card.remainingSessions === 1 ? card.escrow : card.perSession);
 
-  const run = (kind: 'checkin' | 'refund') => {
+  const run = async (kind: 'checkin' | 'refund') => {
     const ix =
-      kind === 'checkin'
-        ? getCheckInInstruction({
-            owner: client.identity,
-            card: card.address,
-            merchant: merchant.address,
-            authority: merchant.authority as Address,
-          })
-        : getRefundInstruction({ owner: client.identity, card: card.address, merchant: merchant.address });
+      kind === 'checkin' ? await checkInIx(client.identity, card, merchant) : await refundIx(client.identity, card);
     send.dispatchAsync([ix]).then(onChange, () => {});
   };
 
@@ -52,7 +48,7 @@ export function CardView({
         planName={planName ?? t('card.default')}
         used={used}
         total={card.totalSessions}
-        escrowSol={formatSol(card.escrow)}
+        escrowLabel={money(card.escrow)}
         dimmed={card.remainingSessions === 0}
       />
       <div className="flex flex-col justify-between gap-5">
@@ -76,7 +72,7 @@ export function CardView({
                 title={canRefund ? '' : t('card.refundBlocked')}
               >
                 <Undo2 size={14} />
-                {card.remainingSessions === 0 ? t('card.close') : t('card.refund', { amount: formatSol(card.escrow) })}
+                {card.remainingSessions === 0 ? t('card.close') : t('card.refund', { amount: money(card.escrow) })}
               </button>
             </div>
             {canCheckIn && <p className="text-xs text-subtle">{t('card.checkInHint', { amount: nextRelease })}</p>}
