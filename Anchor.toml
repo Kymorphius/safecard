@@ -1,0 +1,22 @@
+skip_local_validator = true
+
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+safecard = "5NpKPE9MWxrgDB4NgvTEp2MgQ84uYhENy3M7Tc9UTSW9"
+
+[programs.devnet]
+safecard = "5NpKPE9MWxrgDB4NgvTEp2MgQ84uYhENy3M7Tc9UTSW9"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
