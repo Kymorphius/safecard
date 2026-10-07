@@ -56,9 +56,11 @@ function Inner() {
 }
 
 export function WalletButton() {
-  const { client } = useApp();
+  const { client, mounted } = useApp();
+  const fallback = <span className="text-sm text-muted">加载钱包…</span>;
+  if (!mounted) return fallback;
   return (
-    <WalletReadyGate client={client} fallback={<span className="text-sm text-muted">加载钱包…</span>}>
+    <WalletReadyGate client={client} fallback={fallback}>
       <Inner />
     </WalletReadyGate>
   );

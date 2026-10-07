@@ -6,11 +6,20 @@ import { useConnectedWallet } from '@solana/kit-plugin-wallet/react';
 import { useAction, useClient } from '@solana/react';
 import type { AppClient } from '@/app/providers';
 
+/** 是否已在浏览器挂载。钱包状态只存在于浏览器，挂载前一律按“未连接”渲染，避免水合不一致 */
+export function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 export function useApp() {
   const client = useClient<AppClient>();
-  const connected = useConnectedWallet(client);
+  const mounted = useMounted();
+  const connectedState = useConnectedWallet(client);
+  const connected = mounted ? connectedState : null;
   const wallet = (connected?.account.address ?? null) as Address | null;
-  return { client, connected, wallet };
+  return { client, connected, wallet, mounted };
 }
 
 /** 当前 Unix 秒，每秒刷新（用于倒计时） */
