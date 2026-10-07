@@ -164,6 +164,10 @@ const dict = {
   'err.6007': ['Arithmetic overflow', '数值溢出'],
   'err.2001': ['Not authorized (account mismatch)', '没有权限（账户不匹配）'],
   'err.rejected': ['You cancelled the signature', '你取消了签名'],
+  'err.expired': [
+    'The transaction expired while waiting for your signature. Nothing was charged. Please try again and confirm within a minute.',
+    '交易等待签名太久已过期，没有扣费。请重试，并在一分钟内确认。',
+  ],
   'err.network': [
     'The network is busy. Check whether the transaction went through, then try again.',
     '网络繁忙。请先确认交易是否已上链，再重试。',
