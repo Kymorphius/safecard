@@ -49,6 +49,10 @@ pub mod safecard {
         crate::instructions::refund::handle_refund(ctx)
     }
 
+    pub fn update_merchant(ctx: Context<UpdateMerchant>, name: String) -> Result<()> {
+        crate::instructions::update_merchant::handle_update_merchant(ctx, name)
+    }
+
     pub fn close_merchant(ctx: Context<CloseMerchant>) -> Result<()> {
         crate::instructions::close_merchant::handle_close_merchant(ctx)
     }

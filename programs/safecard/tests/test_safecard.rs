@@ -329,3 +329,35 @@ fn attacker_cannot_check_in_or_refund_someone_elses_card() {
     // 用户的钱还在
     assert_eq!(read::<Card>(&env.svm, &env.card).escrow, PRICE);
 }
+
+fn update_merchant_ix(env: &Env, authority: &Pubkey, name: &str) -> Instruction {
+    Instruction::new_with_bytes(
+        safecard::id(),
+        &safecard::instruction::UpdateMerchant { name: name.into() }.data(),
+        safecard::accounts::UpdateMerchant {
+            authority: *authority,
+            merchant: env.merchant,
+        }
+        .to_account_metas(None),
+    )
+}
+
+#[test]
+fn merchant_can_rename_but_others_cannot() {
+    let mut env = setup();
+    let ix = update_merchant_ix(&env, &env.merchant_auth.pubkey(), "Lotus Yoga Studio");
+    send(&mut env.svm, ix, &[&env.merchant_auth]).unwrap();
+    assert_eq!(read::<Merchant>(&env.svm, &env.merchant).name, "Lotus Yoga Studio");
+
+    // 超长名字被拒
+    let ix = update_merchant_ix(&env, &env.merchant_auth.pubkey(), &"x".repeat(33));
+    let err = send(&mut env.svm, ix, &[&env.merchant_auth]).unwrap_err();
+    assert!(err.contains("NameTooLong"), "{err}");
+
+    // 别人不能改
+    let attacker = Keypair::new();
+    env.svm.airdrop(&attacker.pubkey(), 10 * SOL).unwrap();
+    let ix = update_merchant_ix(&env, &attacker.pubkey(), "Scam Gym");
+    assert!(send(&mut env.svm, ix, &[&attacker]).is_err());
+    assert_eq!(read::<Merchant>(&env.svm, &env.merchant).name, "Lotus Yoga Studio");
+}

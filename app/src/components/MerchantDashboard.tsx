@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import { ArrowUpRight, Plus } from 'lucide-react';
+import { ArrowUpRight, Pencil, Plus } from 'lucide-react';
 import { type Address } from '@solana/kit';
 import {
   type Merchant,
@@ -12,6 +12,7 @@ import {
   getCloseMerchantInstructionAsync,
   getCreatePlanInstruction,
   getRegisterMerchantInstructionAsync,
+  getUpdateMerchantInstructionAsync,
 } from '@/generated';
 import {
   fetchCardsByMerchant,
@@ -140,7 +141,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
     <div className="space-y-10">
       <PageHeader
         eyebrow={t('nav.merchant')}
-        title={merchant.name}
+        title={<MerchantName merchant={merchant} onDone={refresh} />}
         sub={<span className="mono text-xs text-subtle">{merchant.address}</span>}
         right={<StatusBadge merchant={merchant} />}
       />
@@ -237,6 +238,61 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
         </Section>
       )}
     </div>
+  );
+}
+
+function MerchantName({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDone: () => void }) {
+  const { client } = useApp();
+  const send = useSend();
+  const { t } = useI18n();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(merchant.name);
+
+  if (!editing)
+    return (
+      <span className="inline-flex items-center gap-3">
+        {merchant.name}
+        <button
+          className="rounded-full p-2 text-subtle transition-colors hover:bg-surface-2 hover:text-fg"
+          onClick={() => {
+            setName(merchant.name);
+            setEditing(true);
+          }}
+          aria-label={t('md.rename')}
+          title={t('md.rename')}
+        >
+          <Pencil size={16} />
+        </button>
+      </span>
+    );
+
+  const save = async () => {
+    const ix = await getUpdateMerchantInstructionAsync({ authority: client.identity, name });
+    send.dispatchAsync([ix]).then(() => {
+      setEditing(false);
+      onDone();
+    }, () => {});
+  };
+
+  return (
+    <span className="flex flex-col gap-2 text-base font-normal tracking-normal">
+      <span className="flex flex-wrap items-center gap-2">
+        <input
+          className="input h-11 w-72 text-lg"
+          value={name}
+          maxLength={32}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button className="btn" disabled={!name || name === merchant.name || send.isRunning} onClick={save}>
+          {t('md.save')}
+        </button>
+        <button className="btn-secondary" disabled={send.isRunning} onClick={() => setEditing(false)}>
+          {t('md.cancel')}
+        </button>
+      </span>
+      <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
+    </span>
   );
 }
 

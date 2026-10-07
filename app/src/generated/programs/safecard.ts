@@ -51,12 +51,14 @@ import {
   getCreatePlanInstructionAsync,
   getRefundInstruction,
   getRegisterMerchantInstructionAsync,
+  getUpdateMerchantInstructionAsync,
   parseBuyCardInstruction,
   parseCheckInInstruction,
   parseCloseMerchantInstruction,
   parseCreatePlanInstruction,
   parseRefundInstruction,
   parseRegisterMerchantInstruction,
+  parseUpdateMerchantInstruction,
   type BuyCardAsyncInput,
   type CheckInInput,
   type CloseMerchantAsyncInput,
@@ -67,8 +69,10 @@ import {
   type ParsedCreatePlanInstruction,
   type ParsedRefundInstruction,
   type ParsedRegisterMerchantInstruction,
+  type ParsedUpdateMerchantInstruction,
   type RefundInput,
   type RegisterMerchantAsyncInput,
+  type UpdateMerchantAsyncInput,
 } from "../instructions";
 import { findCardPda, findMerchantPda } from "../pdas";
 
@@ -191,6 +195,7 @@ export enum SafecardInstruction {
   CreatePlan,
   Refund,
   RegisterMerchant,
+  UpdateMerchant,
 }
 
 export function identifySafecardInstruction(
@@ -263,6 +268,17 @@ export function identifySafecardInstruction(
   ) {
     return SafecardInstruction.RegisterMerchant;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([192, 114, 143, 220, 199, 50, 234, 165]),
+      ),
+      0,
+    )
+  ) {
+    return SafecardInstruction.UpdateMerchant;
+  }
   throw new SolanaError(
     SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION,
     { instructionData: data, programName: "safecard" },
@@ -289,7 +305,10 @@ export type ParsedSafecardInstruction<
     } & ParsedRefundInstruction<TProgram>)
   | ({
       instructionType: SafecardInstruction.RegisterMerchant;
-    } & ParsedRegisterMerchantInstruction<TProgram>);
+    } & ParsedRegisterMerchantInstruction<TProgram>)
+  | ({
+      instructionType: SafecardInstruction.UpdateMerchant;
+    } & ParsedUpdateMerchantInstruction<TProgram>);
 
 export function parseSafecardInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>,
@@ -338,6 +357,13 @@ export function parseSafecardInstruction<TProgram extends string>(
         ...parseRegisterMerchantInstruction(instruction),
       };
     }
+    case SafecardInstruction.UpdateMerchant: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SafecardInstruction.UpdateMerchant,
+        ...parseUpdateMerchantInstruction(instruction),
+      };
+    }
     default:
       throw new SolanaError(
         SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE,
@@ -383,6 +409,10 @@ export type SafecardPluginInstructions = {
   registerMerchant: (
     input: RegisterMerchantAsyncInput,
   ) => ReturnType<typeof getRegisterMerchantInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  updateMerchant: (
+    input: UpdateMerchantAsyncInput,
+  ) => ReturnType<typeof getUpdateMerchantInstructionAsync> &
     SelfPlanAndSendFunctions;
 };
 
@@ -432,6 +462,11 @@ export function safecardProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getRegisterMerchantInstructionAsync(input),
+            ),
+          updateMerchant: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getUpdateMerchantInstructionAsync(input),
             ),
         },
         pdas: { card: findCardPda, merchant: findMerchantPda },

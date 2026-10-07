@@ -12,3 +12,4 @@ export * from "./closeMerchant";
 export * from "./createPlan";
 export * from "./refund";
 export * from "./registerMerchant";
+export * from "./updateMerchant";

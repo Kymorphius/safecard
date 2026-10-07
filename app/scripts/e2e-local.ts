@@ -12,6 +12,7 @@ import {
   getCreatePlanInstruction,
   getRefundInstruction,
   getRegisterMerchantInstructionAsync,
+  getUpdateMerchantInstructionAsync,
 } from '../src/generated';
 import { fetchCardsByMerchant, fetchCardsByOwner, fetchMerchants, fetchPlans, findPlanPda, isDefaulted } from '../src/lib/solana';
 import { friendlyError } from '../src/lib/errors';
@@ -44,6 +45,8 @@ async function main() {
     getCreatePlanInstruction({ authority: shop.identity, merchant, plan, name: '4 次课', price: 400_000_001n, sessions: 4 }),
   ]);
   assert((await fetchMerchants(shop.rpc)).some((x) => x.address === merchant), 'fetchMerchants 能查到商家');
+  await shop.sendTransaction([await getUpdateMerchantInstructionAsync({ authority: shop.identity, name: 'E2E Yoga' })]);
+  assert((await fetchMerchant(shop.rpc, merchant)).data.name === 'E2E Yoga', '商家改名成功');
   const plans = await fetchPlans(shop.rpc, merchant);
   assert(plans.length === 1 && plans[0].address === plan, 'fetchPlans 按商家过滤正确');
 

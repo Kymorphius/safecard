@@ -15,7 +15,12 @@ export function PageHeader({
     <div className="flex flex-wrap items-end justify-between gap-4 pb-2">
       <div className="min-w-0">
         {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
-        <h1 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{title}</h1>
+        {/* 标题里含交互控件时不能放进 <h1>（会嵌套 <p>/<input>） */}
+        {typeof title === 'string' ? (
+          <h1 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{title}</h1>
+        ) : (
+          <div className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{title}</div>
+        )}
         {sub && <div className="mt-2 text-sm text-muted">{sub}</div>}
       </div>
       {right}

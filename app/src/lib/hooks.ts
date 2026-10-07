@@ -53,8 +53,14 @@ export function usePoll<T>(key: string | null, fn: (() => Promise<T>) | null, in
     setData(undefined);
     if (!key) return;
     refresh();
-    const id = setInterval(refresh, intervalMs);
-    return () => clearInterval(id);
+    // 标签页在后台时不轮询，减少对公共 RPC 的请求，避免被限流
+    const id = setInterval(() => document.visibilityState === 'visible' && refresh(), intervalMs);
+    const onVisible = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [key, intervalMs, refresh]);
 
   return { data, error, refresh, loading: key != null && data === undefined && !error };

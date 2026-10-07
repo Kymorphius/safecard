@@ -21,6 +21,7 @@ export function friendlyError(err: unknown, t: T): string {
   const hex = all.match(/custom program error: 0x([0-9a-f]+)/i);
   if (hex && programError(parseInt(hex[1], 16))) return programError(parseInt(hex[1], 16))!;
   if (/reject|denied|cancel/i.test(all)) return t('err.rejected');
+  if (/failed to fetch|network|429|too many requests|timed? ?out/i.test(all)) return t('err.network');
   if (/insufficient|0x1\b/i.test(all)) return t('err.insufficient');
   if (/already in use/i.test(all)) return t('err.inUse');
   return texts[0] ?? String(err);

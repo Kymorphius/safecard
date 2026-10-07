@@ -124,6 +124,9 @@ const dict = {
     '关店后停止售卡和签到，所有持卡人可立即取回剩余余额。可用于演示商家跑路。',
   ],
   'md.overview': ['Overview', '概览'],
+  'md.rename': ['Rename', '改名'],
+  'md.save': ['Save', '保存'],
+  'md.cancel': ['Cancel', '取消'],
   'md.planName': ['Plan name', '套餐名'],
   'md.defaultPlanName': ['12 PT sessions', '12 次私教课'],
   'md.price': ['Total price (SOL)', '总价 SOL'],
@@ -161,6 +164,10 @@ const dict = {
   'err.6007': ['Arithmetic overflow', '数值溢出'],
   'err.2001': ['Not authorized (account mismatch)', '没有权限（账户不匹配）'],
   'err.rejected': ['You cancelled the signature', '你取消了签名'],
+  'err.network': [
+    'The network is busy. Check whether the transaction went through, then try again.',
+    '网络繁忙。请先确认交易是否已上链，再重试。',
+  ],
   'err.insufficient': ['Insufficient SOL for the amount plus fees', '余额不足（需要 SOL 支付金额和手续费）'],
   'err.inUse': ['Account already exists (e.g. you already hold a card for this plan)', '账户已存在（比如同一套餐已经买过一张卡）'],
 } satisfies Record<string, [string, string]>;
