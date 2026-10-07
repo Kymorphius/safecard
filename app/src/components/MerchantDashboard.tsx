@@ -302,7 +302,10 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
   const { t } = useI18n();
   const [name, setName] = useState<string>(t('md.defaultPlanName'));
   const [price, setPrice] = useState('0.12');
-  const [sessions, setSessions] = useState(12);
+  // 输入框内容用字符串保存，清空时不会变成 0
+  const [sessions, setSessions] = useState('12');
+  const sessionsNum = Number(sessions);
+  const sessionsValid = Number.isInteger(sessionsNum) && sessionsNum >= 1 && sessionsNum <= 1000;
 
   const submit = async () => {
     const plan = await findPlanPda(merchant.address, merchant.planCount);
@@ -312,7 +315,7 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
       plan,
       name,
       price: solToLamports(price),
-      sessions,
+      sessions: sessionsNum,
     });
     send.dispatchAsync([ix]).then(onDone, () => {});
   };
@@ -335,13 +338,13 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
             type="number"
             min={1}
             value={sessions}
-            onChange={(e) => setSessions(Number(e.target.value))}
+            onChange={(e) => setSessions(e.target.value)}
           />
         </div>
       </div>
       <button
         className="btn-secondary"
-        disabled={!name || !(Number(price) > 0) || sessions < 1 || send.isRunning}
+        disabled={!name || !(Number(price) > 0) || !sessionsValid || send.isRunning}
         onClick={submit}
       >
         <Plus size={14} /> {t('md.addPlan')}
