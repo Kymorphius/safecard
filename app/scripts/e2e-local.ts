@@ -16,6 +16,9 @@ import {
 import { fetchCardsByMerchant, fetchCardsByOwner, fetchMerchants, fetchPlans, findPlanPda, isDefaulted } from '../src/lib/solana';
 import { friendlyError } from '../src/lib/errors';
 
+// 直接返回翻译 key，便于断言
+const t = ((key: string) => key) as Parameters<typeof friendlyError>[1];
+
 const SOL = 1_000_000_000n;
 const makeClient = async () =>
   createClient().use(generatedSigner()).use(solanaLocalRpc()).use(airdropSigner(lamports(5n * SOL)));
@@ -65,8 +68,8 @@ async function main() {
     await user.sendTransaction([getRefundInstruction({ owner: user.identity, card: card.address, merchant })]);
     throw new Error('refund should fail');
   } catch (e) {
-    const msg = friendlyError(e);
-    assert(msg.includes('不能退款'), `营业中退款被拒，错误提示：「${msg}」`);
+    const msg = friendlyError(e, t);
+    assert(msg === 'err.6006', `营业中退款被拒，错误提示：「${msg}」`);
   }
 
   // 等待超时 → 跑路 → 退款

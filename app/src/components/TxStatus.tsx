@@ -2,6 +2,7 @@
 
 import { explorerUrl } from '@/lib/solana';
 import { friendlyError } from '@/lib/errors';
+import { useI18n } from '@/lib/i18n';
 
 export function TxStatus({
   isRunning,
@@ -12,14 +13,15 @@ export function TxStatus({
   error: unknown;
   signature?: string;
 }) {
-  if (isRunning) return <p className="text-sm text-muted">等待钱包签名并上链…</p>;
-  if (error) return <p className="text-sm text-danger">❌ {friendlyError(error)}</p>;
+  const { t } = useI18n();
+  if (isRunning) return <p className="text-sm text-muted">{t('tx.pending')}</p>;
+  if (error) return <p className="text-sm text-danger">❌ {friendlyError(error, t)}</p>;
   if (signature)
     return (
       <p className="text-sm text-success">
-        ✅ 已上链{' '}
+        ✅ {t('tx.confirmed')}{' '}
         <a className="underline" href={explorerUrl('tx', signature)} target="_blank" rel="noreferrer">
-          查看交易
+          {t('tx.view')}
         </a>
       </p>
     );

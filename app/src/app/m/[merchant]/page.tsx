@@ -8,7 +8,7 @@ async function Content({ params }: { params: PageProps<'/m/[merchant]'>['params'
 
 export default function Page({ params }: PageProps<'/m/[merchant]'>) {
   return (
-    <Suspense fallback={<p className="text-muted">加载中…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <Content params={params} />
     </Suspense>
   );

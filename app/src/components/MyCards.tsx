@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { type Merchant, type Plan, fetchAllMaybeMerchant, fetchAllMaybePlan } from '@/generated';
 import { fetchCardsByOwner, type WithAddress } from '@/lib/solana';
 import { useApp, usePoll } from '@/lib/hooks';
+import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
 
 export function MyCards() {
   const { client, wallet } = useApp();
+  const { t } = useI18n();
   const q = usePoll(wallet ? `mycards:${wallet}` : null, async () => {
     const cards = await fetchCardsByOwner(client.rpc, wallet!);
     const merchantAddrs = [...new Set(cards.map((c) => c.merchant))];
@@ -22,15 +24,19 @@ export function MyCards() {
     return { cards, mMap, pMap };
   }, 4000);
 
-  if (!wallet) return <p className="text-muted">请先连接钱包。</p>;
-  if (!q.data) return <p className="text-muted">读取链上数据…</p>;
+  if (!wallet) return <p className="text-muted">{t('common.connectFirst')}</p>;
+  if (!q.data) return <p className="text-muted">{t('common.loading')}</p>;
   const { cards, mMap, pMap } = q.data;
 
   return (
     <div className="space-y-3">
-      <h1 className="text-2xl font-bold">我的卡</h1>
+      <h1 className="text-2xl font-bold">{t('my.title')}</h1>
       {cards.length === 0 && (
-        <p className="text-muted">还没有卡。去 <Link className="underline" href="/">首页</Link> 挑一家店吧。</p>
+        <p className="text-muted">
+          {t('my.empty.before')}
+          <Link className="underline" href="/">{t('my.empty.link')}</Link>
+          {t('my.empty.after')}
+        </p>
       )}
       {cards.map((c) => {
         const m = mMap.get(c.merchant);

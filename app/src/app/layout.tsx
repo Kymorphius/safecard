@@ -4,13 +4,13 @@ import { Providers } from './providers';
 import { Nav } from '@/components/Nav';
 
 export const metadata: Metadata = {
-  title: 'SafeCard 安心卡',
-  description: '链上托管的预付卡：按次放款，商家跑路一键退款',
+  title: 'SafeCard',
+  description: 'Prepaid cards with on-chain escrow: paid out per visit, refundable if the shop disappears',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="zh-CN" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
         <Providers>
           <Nav />

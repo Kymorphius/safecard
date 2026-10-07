@@ -2,8 +2,8 @@ import {
   type Address,
   type Decoder,
   type ReadonlyUint8Array,
+  type GetProgramAccountsApi,
   type Rpc,
-  type SolanaRpcApi,
   getAddressEncoder,
   getBase58Decoder,
   getBase64Encoder,
@@ -28,7 +28,7 @@ export const CLUSTER = 'devnet';
 
 export type WithAddress<T> = T & { address: Address };
 
-type AnyRpc = Rpc<SolanaRpcApi>;
+type AnyRpc = Rpc<GetProgramAccountsApi>;
 
 const base58 = getBase58Decoder();
 const base64 = getBase64Encoder();

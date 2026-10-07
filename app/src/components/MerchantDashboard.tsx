@@ -24,16 +24,18 @@ import { useApp, usePoll, useSend } from '@/lib/hooks';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
 import { TxStatus } from './TxStatus';
 import type { Merchant } from '@/generated';
+import { useI18n } from '@/lib/i18n';
 
 const TIMEOUT_PRESETS = [
-  { label: '60 秒（演示用）', value: 60 },
-  { label: '1 天', value: 86400 },
-  { label: '30 天', value: 30 * 86400 },
-];
+  { label: 'md.preset60', value: 60 },
+  { label: 'md.preset1d', value: 86400 },
+  { label: 'md.preset30d', value: 30 * 86400 },
+] as const;
 
 export function MerchantDashboard() {
   const { client, wallet } = useApp();
   const [merchantPda, setMerchantPda] = useState<Address | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     setMerchantPda(null);
@@ -45,8 +47,8 @@ export function MerchantDashboard() {
     return m.exists ? ({ ...m.data, address: m.address } as WithAddress<Merchant>) : null;
   });
 
-  if (!wallet) return <p className="text-muted">请先连接商家钱包。</p>;
-  if (merchantQ.data === undefined) return <p className="text-muted">读取链上数据…</p>;
+  if (!wallet) return <p className="text-muted">{t('md.connectFirst')}</p>;
+  if (merchantQ.data === undefined) return <p className="text-muted">{t('common.loading')}</p>;
   if (merchantQ.data === null) return <RegisterForm onDone={merchantQ.refresh} />;
   return <Dashboard merchant={merchantQ.data} refresh={merchantQ.refresh} />;
 }
@@ -54,7 +56,8 @@ export function MerchantDashboard() {
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const { client } = useApp();
   const send = useSend();
-  const [name, setName] = useState('铁馆健身');
+  const { t } = useI18n();
+  const [name, setName] = useState<string>(t('md.defaultShopName'));
   const [timeout, setTimeout_] = useState(60);
 
   const submit = async () => {
@@ -68,16 +71,16 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="card max-w-md">
-      <h1 className="h2">注册商家</h1>
-      <label className="label">店名</label>
+      <h1 className="h2">{t('md.register')}</h1>
+      <label className="label">{t('md.shopName')}</label>
       <input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
-      <label className="label mt-3">跑路判定：超过多久没有任何签到，持卡人可退款</label>
+      <label className="label mt-3">{t('md.timeoutLabel')}</label>
       <select className="input" value={timeout} onChange={(e) => setTimeout_(Number(e.target.value))}>
         {TIMEOUT_PRESETS.map((p) => (
-          <option key={p.value} value={p.value}>{p.label}</option>
+          <option key={p.value} value={p.value}>{t(p.label)}</option>
         ))}
       </select>
-      <button className="btn mt-4" disabled={!name || send.isRunning} onClick={submit}>注册</button>
+      <button className="btn mt-4" disabled={!name || send.isRunning} onClick={submit}>{t('md.registerBtn')}</button>
       <div className="mt-2"><TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} /></div>
     </div>
   );
@@ -91,6 +94,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
   useEffect(() => setOrigin(window.location.origin), []);
   const checkInUrl = `${origin}/m/${merchant.address}`;
   const closeSend = useSend();
+  const { t } = useI18n();
 
   const refreshAll = () => {
     refresh();
@@ -99,7 +103,7 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
   };
 
   const closeShop = async () => {
-    if (!confirm('关店后不能再卖卡和签到，所有持卡人可立即退款。确定吗？')) return;
+    if (!confirm(t('md.closeConfirm'))) return;
     const ix = await getCloseMerchantInstructionAsync({ authority: client.identity });
     closeSend.dispatchAsync([ix]).then(refreshAll, () => {});
   };
@@ -116,40 +120,40 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
 
       <div className="grid gap-6 sm:grid-cols-[1fr_auto]">
         <div className="card">
-          <h2 className="h2">套餐</h2>
+          <h2 className="h2">{t('md.plans')}</h2>
           {plans.data?.length ? (
             <ul className="mb-4 divide-y divide-line">
               {plans.data.map((p) => (
                 <li key={p.address} className="flex justify-between py-2 text-sm">
                   <span>{p.name}</span>
-                  <span className="tabular-nums text-muted">{p.sessions} 次 · {formatSol(p.price)} SOL</span>
+                  <span className="tabular-nums text-muted">{t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mb-4 text-sm text-muted">还没有套餐</p>
+            <p className="mb-4 text-sm text-muted">{t('md.noPlans')}</p>
           )}
           {!merchant.closed && <PlanForm merchant={merchant} onDone={refreshAll} />}
         </div>
 
         <div className="card flex flex-col items-center text-center">
-          <h2 className="h2">签到二维码</h2>
+          <h2 className="h2">{t('md.qr')}</h2>
           {origin && (
             <div className="rounded-xl bg-white p-3">
               <QRCodeSVG value={checkInUrl} size={168} />
             </div>
           )}
-          <p className="mt-2 text-xs text-muted">顾客用钱包扫码签到</p>
-          <Link className="mt-1 text-xs underline" href={`/m/${merchant.address}`}>打开店铺页</Link>
+          <p className="mt-2 text-xs text-muted">{t('md.qrHint')}</p>
+          <Link className="mt-1 text-xs underline" href={`/m/${merchant.address}`}>{t('md.openStore')}</Link>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="h2">顾客的卡</h2>
+        <h2 className="h2">{t('md.customerCards')}</h2>
         {cards.data?.length ? (
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted">
-              <tr><th className="py-1">顾客</th><th>套餐</th><th>剩余次数</th><th className="text-right">托管中</th></tr>
+              <tr><th className="py-1">{t('md.col.customer')}</th><th>{t('md.col.plan')}</th><th>{t('md.col.left')}</th><th className="text-right">{t('md.col.escrow')}</th></tr>
             </thead>
             <tbody>
               {cards.data.map((c) => (
@@ -163,13 +167,13 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-muted">还没有顾客买卡</p>
+          <p className="text-sm text-muted">{t('md.noCards')}</p>
         )}
       </div>
 
       {!merchant.closed && (
         <div>
-          <button className="btn-danger" disabled={closeSend.isRunning} onClick={closeShop}>🚪 关店（演示跑路）</button>
+          <button className="btn-danger" disabled={closeSend.isRunning} onClick={closeShop}>{t('md.closeBtn')}</button>
           <div className="mt-2"><TxStatus isRunning={closeSend.isRunning} error={closeSend.error} signature={closeSend.data} /></div>
         </div>
       )}
@@ -180,7 +184,8 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
 function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDone: () => void }) {
   const { client } = useApp();
   const send = useSend();
-  const [name, setName] = useState('12 次私教课');
+  const { t } = useI18n();
+  const [name, setName] = useState<string>(t('md.defaultPlanName'));
   const [price, setPrice] = useState('0.12');
   const [sessions, setSessions] = useState(12);
 
@@ -199,11 +204,11 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
 
   return (
     <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
-      <div><label className="label">套餐名</label><input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} /></div>
-      <div><label className="label">总价 SOL</label><input className="input" value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} /></div>
-      <div><label className="label">次数</label><input className="input" type="number" min={1} value={sessions} onChange={(e) => setSessions(Number(e.target.value))} /></div>
+      <div><label className="label">{t('md.planName')}</label><input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} /></div>
+      <div><label className="label">{t('md.price')}</label><input className="input" value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} /></div>
+      <div><label className="label">{t('md.sessions')}</label><input className="input" type="number" min={1} value={sessions} onChange={(e) => setSessions(Number(e.target.value))} /></div>
       <div className="col-span-3">
-        <button className="btn" disabled={!name || !(Number(price) > 0) || sessions < 1 || send.isRunning} onClick={submit}>上架套餐</button>
+        <button className="btn" disabled={!name || !(Number(price) > 0) || sessions < 1 || send.isRunning} onClick={submit}>{t('md.addPlan')}</button>
         <div className="mt-2"><TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} /></div>
       </div>
     </div>
