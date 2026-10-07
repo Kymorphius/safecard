@@ -5,6 +5,8 @@ import { ChevronRight } from 'lucide-react';
 import { fetchMerchants, formatSol, shortAddr } from '@/lib/solana';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
+import { merchantHasNoRefunds } from '@/lib/badges';
+import { NoRefundsPill } from './Badges';
 import { StatusBadge } from './MerchantStatus';
 
 export function MerchantList() {
@@ -33,7 +35,10 @@ export function MerchantList() {
           className="group grid items-center gap-3 px-5 py-4 transition-colors hover:bg-surface-2 sm:grid-cols-[1.4fr_1fr_auto]"
         >
           <div className="min-w-0">
-            <div className="truncate text-[15px] font-medium">{m.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="truncate text-[15px] font-medium">{m.name}</span>
+              {merchantHasNoRefunds(m) && <NoRefundsPill />}
+            </div>
             <div className="mono mt-0.5 text-xs text-subtle">{shortAddr(m.address)}</div>
           </div>
           <div className="flex gap-5 text-xs text-muted">

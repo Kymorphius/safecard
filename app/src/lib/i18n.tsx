@@ -154,6 +154,23 @@ const dict = {
   'my.empty.link': ['home page', '首页'],
   'my.empty.after': ['.', ' 挑一家店吧。'],
 
+  // badges
+  'badge.title': ['Badges', '成就徽章'],
+  'badge.loading': ['Reading your on-chain history…', '正在读取链上记录…'],
+  'badge.count': ['{n} of {total} unlocked', '已解锁 {n} / {total}'],
+  'badge.first': ['First Class', '初次到店'],
+  'badge.first.desc': ['Checked in for the first time', '完成第一次签到'],
+  'badge.regular': ['Regular', '常客'],
+  'badge.regular.desc': ['Checked in 5 times', '累计签到 5 次'],
+  'badge.halfway': ['Halfway There', '过半'],
+  'badge.halfway.desc': ['Used half of a card', '一张卡用掉一半'],
+  'badge.finisher': ['Finisher', '全勤'],
+  'badge.finisher.desc': ['Used every session on a card', '一张卡全部用完'],
+  'badge.protected': ['Protected', '安心'],
+  'badge.protected.desc': ['Got money back from a shop that stopped serving', '商家违约时成功拿回了钱'],
+  'badge.noRefunds': ['No refunds', '零退款'],
+  'badge.noRefunds.desc': ['Has sold cards and never defaulted on a customer', '卖出过卡，且从未因违约让顾客退款'],
+
   // errors
   'err.6000': ['Name is too long (max 32 bytes)', '名称太长（最多 32 字节）'],
   'err.6001': ['Timeout must be greater than 0', '超时时间必须大于 0'],

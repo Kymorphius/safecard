@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { type Merchant, type Plan, fetchAllMaybeMerchant, fetchAllMaybePlan } from '@/generated';
 import { fetchCardsByOwner, type WithAddress } from '@/lib/solana';
+import { customerBadges, fetchHistory } from '@/lib/badges';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
+import { BadgeGrid } from './Badges';
 import { CardView } from './CardView';
 import { EmptyState, PageHeader } from './ui';
 
@@ -24,10 +26,14 @@ export function MyCards() {
     plans.forEach((p) => p.exists && pMap.set(p.address, p.data));
     return { cards, mMap, pMap };
   }, 4000);
+  // 链上历史较重，只在进入页面时读一次，不轮询
+  const history = usePoll(wallet ? `history:${wallet}` : null, () => fetchHistory(client.rpc, wallet!), 10 * 60 * 1000);
+  const badges = customerBadges(q.data?.cards ?? [], history.data);
 
   return (
     <div className="space-y-6">
       <PageHeader title={t('my.title')} />
+      {wallet && <BadgeGrid badges={badges} loading={history.loading} />}
       {!wallet ? (
         <EmptyState>{t('common.connectFirst')}</EmptyState>
       ) : !q.data ? (

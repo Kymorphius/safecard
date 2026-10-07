@@ -8,6 +8,8 @@ import { useApp, usePoll, useSend } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
+import { merchantHasNoRefunds } from '@/lib/badges';
+import { NoRefundsPill } from './Badges';
 import { TxStatus } from './TxStatus';
 import { EmptyState, PageHeader, Section } from './ui';
 
@@ -58,7 +60,12 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
             <ArrowUpRight size={12} />
           </a>
         }
-        right={<StatusBadge merchant={merchant} />}
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            {merchantHasNoRefunds(merchant) && <NoRefundsPill />}
+            <StatusBadge merchant={merchant} />
+          </div>
+        }
       />
 
       {wallet && myCards.data && myCards.data.length > 0 && (
