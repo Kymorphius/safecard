@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
+import { ArrowUpRight, Plus } from 'lucide-react';
 import { type Address } from '@solana/kit';
 import {
+  type Merchant,
   fetchMaybeMerchant,
   findMerchantPda,
   getCloseMerchantInstructionAsync,
@@ -21,10 +23,10 @@ import {
   type WithAddress,
 } from '@/lib/solana';
 import { useApp, usePoll, useSend } from '@/lib/hooks';
+import { useI18n } from '@/lib/i18n';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
 import { TxStatus } from './TxStatus';
-import type { Merchant } from '@/generated';
-import { useI18n } from '@/lib/i18n';
+import { EmptyState, PageHeader, Section } from './ui';
 
 const TIMEOUT_PRESETS = [
   { label: 'md.preset60', value: 60 },
@@ -47,8 +49,14 @@ export function MerchantDashboard() {
     return m.exists ? ({ ...m.data, address: m.address } as WithAddress<Merchant>) : null;
   });
 
-  if (!wallet) return <p className="text-muted">{t('md.connectFirst')}</p>;
-  if (merchantQ.data === undefined) return <p className="text-muted">{t('common.loading')}</p>;
+  if (!wallet)
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('nav.merchant')} />
+        <EmptyState>{t('md.connectFirst')}</EmptyState>
+      </div>
+    );
+  if (merchantQ.data === undefined) return <div className="panel h-64 animate-pulse" />;
   if (merchantQ.data === null) return <RegisterForm onDone={merchantQ.refresh} />;
   return <Dashboard merchant={merchantQ.data} refresh={merchantQ.refresh} />;
 }
@@ -70,31 +78,49 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="card max-w-md">
-      <h1 className="h2">{t('md.register')}</h1>
-      <label className="label">{t('md.shopName')}</label>
-      <input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
-      <label className="label mt-3">{t('md.timeoutLabel')}</label>
-      <select className="input" value={timeout} onChange={(e) => setTimeout_(Number(e.target.value))}>
-        {TIMEOUT_PRESETS.map((p) => (
-          <option key={p.value} value={p.value}>{t(p.label)}</option>
-        ))}
-      </select>
-      <button className="btn mt-4" disabled={!name || send.isRunning} onClick={submit}>{t('md.registerBtn')}</button>
-      <div className="mt-2"><TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} /></div>
+    <div className="mx-auto max-w-md space-y-6 pt-6">
+      <PageHeader eyebrow={t('nav.merchant')} title={t('md.register')} />
+      <div className="panel space-y-5 p-6">
+        <div>
+          <label className="label">{t('md.shopName')}</label>
+          <input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">{t('md.timeoutLabel')}</label>
+          <div className="grid grid-cols-3 gap-2">
+            {TIMEOUT_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setTimeout_(p.value)}
+                className={`rounded-xl border px-2 py-2.5 text-xs transition-colors ${
+                  timeout === p.value
+                    ? 'border-accent bg-accent-soft text-fg'
+                    : 'border-line-strong text-muted hover:text-fg'
+                }`}
+              >
+                {t(p.label)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button className="btn w-full" disabled={!name || send.isRunning} onClick={submit}>
+          {t('md.registerBtn')}
+        </button>
+        <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
+      </div>
     </div>
   );
 }
 
 function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; refresh: () => void }) {
   const { client } = useApp();
+  const { t } = useI18n();
   const plans = usePoll(`plans:${merchant.address}`, () => fetchPlans(client.rpc, merchant.address));
   const cards = usePoll(`mcards:${merchant.address}`, () => fetchCardsByMerchant(client.rpc, merchant.address));
   const [origin, setOrigin] = useState('');
   useEffect(() => setOrigin(window.location.origin), []);
   const checkInUrl = `${origin}/m/${merchant.address}`;
   const closeSend = useSend();
-  const { t } = useI18n();
 
   const refreshAll = () => {
     refresh();
@@ -111,71 +137,104 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
   const planName = (addr: string) => plans.data?.find((p) => p.address === addr)?.name ?? '';
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{merchant.name}</h1>
-        <StatusBadge merchant={merchant} />
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        eyebrow={t('nav.merchant')}
+        title={merchant.name}
+        sub={<span className="mono text-xs text-subtle">{merchant.address}</span>}
+        right={<StatusBadge merchant={merchant} />}
+      />
+
       <MerchantStats merchant={merchant} />
 
-      <div className="grid gap-6 sm:grid-cols-[1fr_auto]">
-        <div className="card">
-          <h2 className="h2">{t('md.plans')}</h2>
-          {plans.data?.length ? (
-            <ul className="mb-4 divide-y divide-line">
-              {plans.data.map((p) => (
-                <li key={p.address} className="flex justify-between py-2 text-sm">
-                  <span>{p.name}</span>
-                  <span className="tabular-nums text-muted">{t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mb-4 text-sm text-muted">{t('md.noPlans')}</p>
-          )}
-          {!merchant.closed && <PlanForm merchant={merchant} onDone={refreshAll} />}
-        </div>
+      <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+        <Section title={t('md.plans')}>
+          <div className="panel overflow-hidden">
+            {plans.data?.length ? (
+              <ul className="divide-y divide-line">
+                {plans.data.map((p) => (
+                  <li key={p.address} className="flex items-center justify-between px-5 py-3.5 text-sm">
+                    <span className="font-medium">{p.name}</span>
+                    <span className="num text-muted">
+                      {t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-5 py-6 text-sm text-muted">{t('md.noPlans')}</p>
+            )}
+            {!merchant.closed && (
+              <div className="border-t border-line bg-surface-2/50 p-5">
+                <PlanForm merchant={merchant} onDone={refreshAll} />
+              </div>
+            )}
+          </div>
+        </Section>
 
-        <div className="card flex flex-col items-center text-center">
-          <h2 className="h2">{t('md.qr')}</h2>
-          {origin && (
-            <div className="rounded-xl bg-white p-3">
-              <QRCodeSVG value={checkInUrl} size={168} />
+        <Section title={t('md.qr')}>
+          <div className="panel flex flex-col items-center p-5 text-center">
+            <div className="rounded-2xl bg-white p-3">
+              {origin ? <QRCodeSVG value={checkInUrl} size={176} /> : <div className="h-[176px] w-[176px]" />}
             </div>
-          )}
-          <p className="mt-2 text-xs text-muted">{t('md.qrHint')}</p>
-          <Link className="mt-1 text-xs underline" href={`/m/${merchant.address}`}>{t('md.openStore')}</Link>
-        </div>
+            <p className="mt-4 text-xs leading-relaxed text-muted">{t('md.qrHint')}</p>
+            <Link
+              className="mt-2 inline-flex items-center gap-0.5 text-xs text-fg underline decoration-line-strong underline-offset-4"
+              href={`/m/${merchant.address}`}
+            >
+              {t('md.openStore')} <ArrowUpRight size={12} />
+            </Link>
+          </div>
+        </Section>
       </div>
 
-      <div className="card">
-        <h2 className="h2">{t('md.customerCards')}</h2>
-        {cards.data?.length ? (
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted">
-              <tr><th className="py-1">{t('md.col.customer')}</th><th>{t('md.col.plan')}</th><th>{t('md.col.left')}</th><th className="text-right">{t('md.col.escrow')}</th></tr>
-            </thead>
-            <tbody>
-              {cards.data.map((c) => (
-                <tr key={c.address} className="border-t border-line">
-                  <td className="py-2 font-mono">{shortAddr(c.owner)}</td>
-                  <td>{planName(c.plan)}</td>
-                  <td className="tabular-nums">{c.remainingSessions} / {c.totalSessions}</td>
-                  <td className="text-right tabular-nums">{formatSol(c.escrow)} SOL</td>
+      <Section title={t('md.customerCards')}>
+        <div className="panel overflow-x-auto">
+          {cards.data?.length ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-subtle">
+                  <th className="px-5 py-3 font-medium">{t('md.col.customer')}</th>
+                  <th className="px-5 py-3 font-medium">{t('md.col.plan')}</th>
+                  <th className="px-5 py-3 font-medium">{t('md.col.left')}</th>
+                  <th className="px-5 py-3 text-right font-medium">{t('md.col.escrow')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-sm text-muted">{t('md.noCards')}</p>
-        )}
-      </div>
+              </thead>
+              <tbody className="divide-y divide-line border-t border-line">
+                {cards.data.map((c) => (
+                  <tr key={c.address}>
+                    <td className="mono px-5 py-3 text-xs">{shortAddr(c.owner)}</td>
+                    <td className="px-5 py-3">{planName(c.plan)}</td>
+                    <td className="num px-5 py-3">
+                      {c.remainingSessions}
+                      <span className="text-subtle"> / {c.totalSessions}</span>
+                    </td>
+                    <td className="num px-5 py-3 text-right">{formatSol(c.escrow)} SOL</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-5 py-6 text-sm text-muted">{t('md.noCards')}</p>
+          )}
+        </div>
+      </Section>
 
       {!merchant.closed && (
-        <div>
-          <button className="btn-danger" disabled={closeSend.isRunning} onClick={closeShop}>{t('md.closeBtn')}</button>
-          <div className="mt-2"><TxStatus isRunning={closeSend.isRunning} error={closeSend.error} signature={closeSend.data} /></div>
-        </div>
+        <Section title={t('md.dangerZone')}>
+          <div
+            className="panel flex flex-wrap items-center justify-between gap-4 p-5"
+            style={{ borderColor: 'color-mix(in srgb, var(--danger) 25%, transparent)' }}
+          >
+            <p className="max-w-lg text-sm text-muted">{t('md.dangerDesc')}</p>
+            <div className="space-y-2">
+              <button className="btn-danger" disabled={closeSend.isRunning} onClick={closeShop}>
+                {t('md.closeBtn')}
+              </button>
+              <TxStatus isRunning={closeSend.isRunning} error={closeSend.error} signature={closeSend.data} />
+            </div>
+          </div>
+        </Section>
       )}
     </div>
   );
@@ -203,14 +262,35 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
   };
 
   return (
-    <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
-      <div><label className="label">{t('md.planName')}</label><input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} /></div>
-      <div><label className="label">{t('md.price')}</label><input className="input" value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} /></div>
-      <div><label className="label">{t('md.sessions')}</label><input className="input" type="number" min={1} value={sessions} onChange={(e) => setSessions(Number(e.target.value))} /></div>
-      <div className="col-span-3">
-        <button className="btn" disabled={!name || !(Number(price) > 0) || sessions < 1 || send.isRunning} onClick={submit}>{t('md.addPlan')}</button>
-        <div className="mt-2"><TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} /></div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
+        <div>
+          <label className="label">{t('md.planName')}</label>
+          <input className="input" value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">{t('md.price')}</label>
+          <input className="input num" value={price} inputMode="decimal" onChange={(e) => setPrice(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">{t('md.sessions')}</label>
+          <input
+            className="input num"
+            type="number"
+            min={1}
+            value={sessions}
+            onChange={(e) => setSessions(Number(e.target.value))}
+          />
+        </div>
       </div>
+      <button
+        className="btn-secondary"
+        disabled={!name || !(Number(price) > 0) || sessions < 1 || send.isRunning}
+        onClick={submit}
+      >
+        <Plus size={14} /> {t('md.addPlan')}
+      </button>
+      <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
     </div>
   );
 }

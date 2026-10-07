@@ -12,15 +12,21 @@ function fmtDuration(s: number, t: T): string {
   return t('dur.s', { n: s });
 }
 
-/** 营业状态徽章：正常营业（倒计时）/ 疑似跑路 / 已关店 */
+/** 营业状态：正常营业（倒计时）/ 超时未服务 / 已关店 */
 export function StatusBadge({ merchant }: { merchant: Merchant }) {
   const now = useNow();
   const { t } = useI18n();
-  if (merchant.closed) return <span className="badge badge-danger">{t('status.closed')}</span>;
-  if (isDefaulted(merchant, now)) return <span className="badge badge-danger">{t('status.defaulted')}</span>;
+  if (merchant.closed || isDefaulted(merchant, now))
+    return (
+      <span className="pill pill-danger">
+        <span className="dot bg-danger" />
+        {merchant.closed ? t('status.closed') : t('status.defaulted')}
+      </span>
+    );
   return (
-    <span className="badge badge-ok" title={t('status.openHint')}>
-      {t('status.open', { time: fmtDuration(secondsUntilDefault(merchant, now), t) })}
+    <span className="pill pill-ok" title={t('status.openHint')}>
+      <span className="dot dot-live" />
+      <span className="num">{t('status.open', { time: fmtDuration(secondsUntilDefault(merchant, now), t) })}</span>
     </span>
   );
 }
@@ -31,17 +37,29 @@ export function MerchantStats({ merchant }: { merchant: Merchant }) {
   const sold = Number(merchant.cardsSold);
   const refundRate = sold === 0 ? 0 : (Number(merchant.refundCount) / sold) * 100;
   const items = [
-    { label: t('stats.escrow'), value: `${formatSol(merchant.totalEscrowed)} SOL`, hint: t('stats.escrowHint') },
-    { label: t('stats.released'), value: `${formatSol(merchant.totalReleased)} SOL`, hint: t('stats.releasedHint') },
-    { label: t('stats.refunded'), value: `${formatSol(merchant.totalRefunded)} SOL`, hint: t('stats.refundedHint') },
-    { label: t('stats.soldRate'), value: t('stats.soldRateValue', { n: sold, rate: refundRate.toFixed(0) }), hint: '' },
+    { label: t('stats.escrow'), value: formatSol(merchant.totalEscrowed), unit: 'SOL', hint: t('stats.escrowHint') },
+    { label: t('stats.released'), value: formatSol(merchant.totalReleased), unit: 'SOL', hint: t('stats.releasedHint') },
+    { label: t('stats.refunded'), value: formatSol(merchant.totalRefunded), unit: 'SOL', hint: t('stats.refundedHint') },
+    {
+      label: t('stats.soldRate'),
+      value: t('stats.soldRateValue', { n: sold, rate: refundRate.toFixed(0) }),
+      unit: '',
+      hint: '',
+    },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {items.map((i) => (
-        <div key={i.label} className="rounded-xl bg-hover p-3" title={i.hint}>
+    <div className="panel grid grid-cols-2 sm:grid-cols-4">
+      {items.map((i, idx) => (
+        <div
+          key={i.label}
+          title={i.hint}
+          className={`p-4 sm:p-5 ${idx % 2 === 1 ? 'border-l border-line' : ''} ${idx >= 2 ? 'border-t border-line sm:border-t-0' : ''} ${idx === 2 ? 'sm:border-l' : ''}`}
+        >
           <div className="text-xs text-muted">{i.label}</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums">{i.value}</div>
+          <div className="num mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
+            {i.value}
+            {i.unit && <span className="ml-1 text-xs font-normal text-subtle">{i.unit}</span>}
+          </div>
         </div>
       ))}
     </div>

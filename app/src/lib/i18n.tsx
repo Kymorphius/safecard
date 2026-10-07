@@ -29,7 +29,13 @@ const dict = {
   'common.sessionsPrice': ['{n} sessions · {price} SOL', '{n} 次 · {price} SOL'],
 
   // home
-  'home.title': ['Prepaid cards that can’t run away with your money', '预付卡，再也不怕老板跑路'],
+  'home.eyebrow': ['Prepaid escrow on Solana', 'Solana 链上预付托管'],
+  'home.title.pre': ['Prepaid cards that ', '预付卡，\n再也不怕老板'],
+  'home.title.em': ['can’t', '跑路'],
+  'home.title.post': [' run away with your money.', ''],
+  'home.ctaBrowse': ['Browse merchants', '浏览商家'],
+  'home.ctaMerchant': ['Open a shop', '我是商家'],
+  'home.howItWorks': ['How it works', '运作方式'],
   'home.body': [
     'Gym memberships, haircut bundles, class passes: your money doesn’t go straight into the owner’s pocket. It sits in escrow on Solana. Each time you use the service and sign, one session’s worth is released to the merchant. If the shop closes or stops serving, you take the rest back in one click.',
     '你买的健身卡、理发卡、课时卡，钱不直接进老板口袋，而是托管在 Solana 链上。每消费一次、你签名确认，才放一次的钱给商家。商家关门或长期不服务，剩下的钱你一键取回。',
@@ -40,7 +46,8 @@ const dict = {
   'home.step2.desc': ['You sign each visit; one session is paid out per check-in', '每次消费由你签名，按次放款给商家'],
   'home.step3.title': ['Shop vanished?', '跑路？'],
   'home.step3.desc': ['No service for too long, or closed: refund the balance in one click', '超时没服务或关店，剩余余额一键退回'],
-  'home.merchants': ['Merchants (public on-chain track record)', '商家（链上信用公开可查）'],
+  'home.merchants': ['Merchants', '商家'],
+  'home.merchantsSub': ['Every number below is read straight from the chain.', '以下数据全部直接读取自链上，公开可查。'],
   'home.noMerchants.before': ['No merchants yet. Go to ', '还没有商家。去 '],
   'home.noMerchants.after': [' to register the first one.', ' 注册第一家店吧。'],
   'home.inEscrow': ['{amount} SOL in escrow', '托管中 {amount} SOL'],
@@ -75,10 +82,12 @@ const dict = {
   'card.escrow': ['In escrow', '卡内托管'],
   'card.used': ['Used {used} / {total}', '已用 {used} / {total} 次'],
   'card.left': ['{n} left', '剩 {n} 次'],
-  'card.checkIn': ['✅ Check in (release {amount} SOL to merchant)', '✅ 签到消费 1 次（放 {amount} SOL 给商家）'],
+  'card.checkIn': ['Check in', '签到消费'],
+  'card.checkInHint': ['Releases {amount} SOL to the merchant', '放 {amount} SOL 给商家'],
+  'card.sessions': ['Sessions', '次数'],
   'card.refundBlocked': ['Merchant is still active, so refunds aren’t available yet', '商家正常营业中，不能退款'],
   'card.close': ['Close card (reclaim rent)', '关闭卡片（退还租金）'],
-  'card.refund': ['💸 Refund {amount} SOL', '💸 退回 {amount} SOL'],
+  'card.refund': ['Refund {amount} SOL', '退回 {amount} SOL'],
 
   // merchant dashboard
   'md.connectFirst': ['Connect the merchant wallet first.', '请先连接商家钱包。'],
@@ -108,7 +117,13 @@ const dict = {
     'After closing, no more sales or check-ins, and every cardholder can refund immediately. Continue?',
     '关店后不能再卖卡和签到，所有持卡人可立即退款。确定吗？',
   ],
-  'md.closeBtn': ['🚪 Close shop (simulate runaway)', '🚪 关店（演示跑路）'],
+  'md.closeBtn': ['Close shop', '关店'],
+  'md.dangerZone': ['Danger zone', '危险操作'],
+  'md.dangerDesc': [
+    'Closing stops new sales and check-ins. Every cardholder can withdraw their remaining balance immediately. Use this to demo a runaway merchant.',
+    '关店后停止售卡和签到，所有持卡人可立即取回剩余余额。可用于演示商家跑路。',
+  ],
+  'md.overview': ['Overview', '概览'],
   'md.planName': ['Plan name', '套餐名'],
   'md.defaultPlanName': ['12 PT sessions', '12 次私教课'],
   'md.price': ['Total price (SOL)', '总价 SOL'],
@@ -125,7 +140,9 @@ const dict = {
   'store.perSession': ['(~{amount} SOL each)', '（每次约 {amount} SOL）'],
   'store.owned': ['Owned', '已持有'],
   'store.connectToBuy': ['Connect wallet to buy', '连接钱包后购买'],
-  'store.buy': ['Buy (funds go to escrow)', '买卡（资金进入托管）'],
+  'store.buy': ['Buy card', '买卡'],
+  'store.buyHint': ['Funds are held in escrow, not paid to the merchant', '资金进入链上托管，不直接付给商家'],
+  'store.merchantAccount': ['Merchant account', '商家账户'],
 
   // my cards
   'my.title': ['My cards', '我的卡'],
@@ -200,13 +217,21 @@ export function useI18n() {
 
 export function LangToggle() {
   const { lang, setLang } = useI18n();
-  return (
+  const opt = (l: Lang, label: string) => (
     <button
-      className="btn-ghost px-2 py-1.5 text-xs"
-      onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
-      aria-label={lang === 'en' ? 'Switch to Chinese' : '切换到英文'}
+      onClick={() => setLang(l)}
+      aria-pressed={lang === l}
+      className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors ${
+        lang === l ? 'bg-surface-2 text-fg' : 'text-subtle hover:text-fg'
+      }`}
     >
-      {lang === 'en' ? '中文' : 'EN'}
+      {label}
     </button>
+  );
+  return (
+    <div className="flex items-center rounded-full border border-line p-0.5" role="group" aria-label="Language">
+      {opt('en', 'EN')}
+      {opt('zh', '中文')}
+    </div>
   );
 }

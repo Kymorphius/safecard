@@ -1,13 +1,15 @@
 'use client';
 
 import { type Address, isAddress } from '@solana/kit';
+import { ArrowUpRight, Lock } from 'lucide-react';
 import { type Merchant, fetchMaybeMerchant, getBuyCardInstructionAsync } from '@/generated';
-import { fetchCardsByOwner, fetchPlans, formatSol, type WithAddress } from '@/lib/solana';
+import { explorerUrl, fetchCardsByOwner, fetchPlans, formatSol, shortAddr, type WithAddress } from '@/lib/solana';
 import { useApp, usePoll, useSend } from '@/lib/hooks';
+import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
-import { useI18n } from '@/lib/i18n';
 import { TxStatus } from './TxStatus';
+import { EmptyState, PageHeader, Section } from './ui';
 
 export function MerchantPublic({ merchantAddress }: { merchantAddress: string }) {
   const { client, wallet } = useApp();
@@ -30,10 +32,10 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
     myCards.refresh();
   };
 
-  if (!valid) return <p className="text-danger">{t('store.invalid')}</p>;
-  if (merchantQ.data === undefined) return <p className="text-muted">{t('common.loading')}</p>;
+  if (!valid) return <EmptyState>{t('store.invalid')}</EmptyState>;
+  if (merchantQ.data === undefined) return <div className="panel h-64 animate-pulse" />;
   const merchant = merchantQ.data;
-  if (!merchant) return <p className="text-danger">{t('store.notFound')}</p>;
+  if (!merchant) return <EmptyState>{t('store.notFound')}</EmptyState>;
 
   const buy = async (plan: Address) => {
     const ix = await getBuyCardInstructionAsync({ buyer: client.identity, merchant: addr, plan });
@@ -42,16 +44,26 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
   const ownedPlans = new Set(myCards.data?.map((c) => c.plan));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{merchant.name}</h1>
-        <StatusBadge merchant={merchant} />
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        title={merchant.name}
+        sub={
+          <a
+            href={explorerUrl('address', merchant.address)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-subtle hover:text-fg"
+          >
+            {t('store.merchantAccount')} <span className="mono">{shortAddr(merchant.address)}</span>
+            <ArrowUpRight size={12} />
+          </a>
+        }
+        right={<StatusBadge merchant={merchant} />}
+      />
 
       {wallet && myCards.data && myCards.data.length > 0 && (
-        <section>
-          <h2 className="h2">{t('store.myCards')}</h2>
-          <div className="space-y-3">
+        <Section title={t('store.myCards')}>
+          <div className="space-y-4">
             {myCards.data.map((c) => (
               <CardView
                 key={c.address}
@@ -62,37 +74,45 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
               />
             ))}
           </div>
-        </section>
+        </Section>
       )}
 
-      <section>
-        <h2 className="h2">{t('store.trackRecord')}</h2>
+      <Section title={t('store.trackRecord')}>
         <MerchantStats merchant={merchant} />
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="h2">{t('store.plans')}</h2>
-        {!plans.data?.length && <p className="text-sm text-muted">{t('store.noPlans')}</p>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {plans.data?.map((p) => (
-            <div key={p.address} className="card">
-              <div className="font-semibold">{p.name}</div>
-              <div className="mt-1 text-sm text-muted">
-                {t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}{' '}
-                {t('store.perSession', { amount: formatSol(p.price / BigInt(p.sessions)) })}
+      <Section title={t('store.plans')}>
+        {!plans.data?.length ? (
+          <EmptyState>{t('store.noPlans')}</EmptyState>
+        ) : (
+          <div className="panel divide-y divide-line overflow-hidden">
+            {plans.data.map((p) => (
+              <div key={p.address} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                <div>
+                  <div className="text-[15px] font-medium">{p.name}</div>
+                  <div className="num mt-0.5 text-xs text-muted">
+                    {t('common.sessionsPrice', { n: p.sessions, price: formatSol(p.price) })}{' '}
+                    {t('store.perSession', { amount: formatSol(p.price / BigInt(p.sessions)) })}
+                  </div>
+                </div>
+                <button
+                  className={ownedPlans.has(p.address) ? 'btn-secondary' : 'btn'}
+                  disabled={!wallet || merchant.closed || ownedPlans.has(p.address) || send.isRunning}
+                  onClick={() => buy(p.address)}
+                >
+                  {ownedPlans.has(p.address) ? t('store.owned') : !wallet ? t('store.connectToBuy') : t('store.buy')}
+                </button>
               </div>
-              <button
-                className="btn mt-3"
-                disabled={!wallet || merchant.closed || ownedPlans.has(p.address) || send.isRunning}
-                onClick={() => buy(p.address)}
-              >
-                {ownedPlans.has(p.address) ? t('store.owned') : !wallet ? t('store.connectToBuy') : t('store.buy')}
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+        <div className="mt-3 flex items-center gap-2 text-xs text-subtle">
+          <Lock size={12} /> {t('store.buyHint')}
         </div>
-        <div className="mt-2"><TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} /></div>
-      </section>
+        <div className="mt-2">
+          <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
+        </div>
+      </Section>
     </div>
   );
 }

@@ -1,89 +1,151 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f7f5;
+  --bg: #fafaf9;
   --surface: #ffffff;
-  --hover: #f0efec;
-  --line: #e4e2dd;
-  --fg: #1c1b19;
-  --muted: #6f6c66;
-  --accent: #6d4aff;
-  --accent-fg: #ffffff;
-  --success: #138a4b;
-  --success-bg: #e3f5ea;
-  --danger: #c7322b;
-  --danger-bg: #fbe7e5;
+  --surface-2: #f4f4f3;
+  --line: rgba(17, 17, 19, 0.08);
+  --line-strong: rgba(17, 17, 19, 0.16);
+  --fg: #111113;
+  --muted: #5d5d66;
+  --subtle: #8e8e97;
+  --accent: #0f9f7a;
+  --accent-soft: rgba(15, 159, 122, 0.1);
+  --danger: #d23b32;
+  --danger-soft: rgba(210, 59, 50, 0.08);
+  --btn-bg: #111113;
+  --btn-fg: #fafaf9;
+  --glow: rgba(15, 159, 122, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121212;
-    --surface: #1b1b1d;
-    --hover: #242427;
-    --line: #2f2f33;
-    --fg: #ededed;
-    --muted: #9b9aa0;
-    --accent: #8f74ff;
-    --accent-fg: #ffffff;
-    --success: #4ccf86;
-    --success-bg: #163324;
-    --danger: #ff6b62;
-    --danger-bg: #3a1a18;
+    --bg: #09090b;
+    --surface: #111113;
+    --surface-2: #18181b;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --fg: #f4f4f5;
+    --muted: #a1a1aa;
+    --subtle: #6b6b74;
+    --accent: #3fd8ae;
+    --accent-soft: rgba(63, 216, 174, 0.1);
+    --danger: #f2706a;
+    --danger-soft: rgba(242, 112, 106, 0.1);
+    --btn-bg: #f4f4f5;
+    --btn-fg: #09090b;
+    --glow: rgba(63, 216, 174, 0.08);
   }
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
-  --color-hover: var(--hover);
+  --color-surface-2: var(--surface-2);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
   --color-accent: var(--accent);
-  --color-success: var(--success);
+  --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: "Inter Variable", -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-serif: "Instrument Serif", "Songti SC", "STSong", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+html {
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: ui-sans-serif, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans);
+  letter-spacing: -0.011em;
+}
+
+/* 页面顶部的柔光背景 */
+.page-glow {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 28rem at 70% -8rem, var(--glow), transparent 70%),
+    radial-gradient(40rem 20rem at 0% -6rem, var(--glow), transparent 70%);
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 6px transparent; opacity: 1; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-medium whitespace-nowrap transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-35;
+    background: var(--btn-bg);
+    color: var(--btn-fg);
   }
-  .btn-ghost {
-    @apply inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40;
+  .btn:not(:disabled):hover { opacity: 0.88; }
+  .btn-secondary {
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface px-4 text-[13px] font-medium whitespace-nowrap text-fg transition-colors duration-150 hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-35;
   }
   .btn-danger {
-    @apply inline-flex items-center gap-2 rounded-lg bg-danger px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-full border px-4 text-[13px] font-medium whitespace-nowrap text-danger transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-35;
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    background: var(--danger-soft);
   }
-  .card {
-    @apply rounded-2xl border border-line bg-surface p-5;
+  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+  .panel {
+    @apply rounded-2xl border border-line bg-surface;
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent;
+    @apply h-10 w-full rounded-xl border border-line-strong bg-surface-2 px-3 text-sm text-fg outline-none transition-colors placeholder:text-subtle focus:border-accent;
   }
   .label {
-    @apply mb-1 block text-xs text-muted;
+    @apply mb-1.5 block text-xs font-medium text-muted;
   }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.14em] text-subtle;
   }
-  .badge-ok {
-    background: var(--success-bg);
-    color: var(--success);
-  }
-  .badge-danger {
-    background: var(--danger-bg);
-    color: var(--danger);
+  .section-title {
+    @apply text-[15px] font-semibold tracking-tight;
   }
   .nav-link {
-    @apply rounded-lg px-2 py-1.5 text-muted hover:bg-hover hover:text-fg;
+    @apply rounded-full px-3 py-1.5 text-[13px] text-muted transition-colors hover:text-fg;
   }
-  .h2 {
-    @apply mb-3 text-lg font-semibold;
+  .nav-link-active {
+    @apply bg-surface-2 text-fg;
+  }
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap;
+  }
+  .pill-ok {
+    @apply border-line text-fg;
+    background: var(--accent-soft);
+  }
+  .pill-danger {
+    @apply text-danger;
+    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+    background: var(--danger-soft);
+  }
+  .dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full;
+  }
+  .dot-live {
+    @apply text-accent;
+    background: var(--accent);
+    animation: pulse-ring 2s ease-out infinite;
+  }
+  .mono {
+    font-family: var(--font-mono);
+    letter-spacing: 0;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
   }
 }

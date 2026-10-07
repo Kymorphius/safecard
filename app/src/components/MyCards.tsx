@@ -6,6 +6,7 @@ import { fetchCardsByOwner, type WithAddress } from '@/lib/solana';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
+import { EmptyState, PageHeader } from './ui';
 
 export function MyCards() {
   const { client, wallet } = useApp();
@@ -24,26 +25,27 @@ export function MyCards() {
     return { cards, mMap, pMap };
   }, 4000);
 
-  if (!wallet) return <p className="text-muted">{t('common.connectFirst')}</p>;
-  if (!q.data) return <p className="text-muted">{t('common.loading')}</p>;
-  const { cards, mMap, pMap } = q.data;
-
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold">{t('my.title')}</h1>
-      {cards.length === 0 && (
-        <p className="text-muted">
+    <div className="space-y-6">
+      <PageHeader title={t('my.title')} />
+      {!wallet ? (
+        <EmptyState>{t('common.connectFirst')}</EmptyState>
+      ) : !q.data ? (
+        <div className="panel h-64 animate-pulse" />
+      ) : q.data.cards.length === 0 ? (
+        <EmptyState>
           {t('my.empty.before')}
-          <Link className="underline" href="/">{t('my.empty.link')}</Link>
+          <Link className="text-fg underline underline-offset-4" href="/">{t('my.empty.link')}</Link>
           {t('my.empty.after')}
-        </p>
+        </EmptyState>
+      ) : (
+        q.data.cards.map((c) => {
+          const m = q.data!.mMap.get(c.merchant);
+          return m ? (
+            <CardView key={c.address} card={c} merchant={m} planName={q.data!.pMap.get(c.plan)?.name} onChange={q.refresh} />
+          ) : null;
+        })
       )}
-      {cards.map((c) => {
-        const m = mMap.get(c.merchant);
-        return m ? (
-          <CardView key={c.address} card={c} merchant={m} planName={pMap.get(c.plan)?.name} onChange={q.refresh} />
-        ) : null;
-      })}
     </div>
   );
 }
