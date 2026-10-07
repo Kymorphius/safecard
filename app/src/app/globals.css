@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --hover: #f0efec;
+  --line: #e4e2dd;
+  --fg: #1c1b19;
+  --muted: #6f6c66;
+  --accent: #6d4aff;
+  --accent-fg: #ffffff;
+  --success: #138a4b;
+  --success-bg: #e3f5ea;
+  --danger: #c7322b;
+  --danger-bg: #fbe7e5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --surface: #1b1b1d;
+    --hover: #242427;
+    --line: #2f2f33;
+    --fg: #ededed;
+    --muted: #9b9aa0;
+    --accent: #8f74ff;
+    --accent-fg: #ffffff;
+    --success: #4ccf86;
+    --success-bg: #163324;
+    --danger: #ff6b62;
+    --danger-bg: #3a1a18;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-danger {
+    @apply inline-flex items-center gap-2 rounded-lg bg-danger px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-surface p-5;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent;
+  }
+  .label {
+    @apply mb-1 block text-xs text-muted;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .badge-ok {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  .badge-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  .nav-link {
+    @apply rounded-lg px-2 py-1.5 text-muted hover:bg-hover hover:text-fg;
+  }
+  .h2 {
+    @apply mb-3 text-lg font-semibold;
+  }
+}
