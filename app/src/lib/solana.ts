@@ -43,7 +43,7 @@ const base58 = getBase58Decoder();
 const base64 = getBase64Encoder();
 
 /** 按账户类型拉取程序下的所有账户，可附加 memcmp 过滤（偏移量相对账户起始位置） */
-async function fetchAllOfType<T extends object>(
+export async function fetchAllOfType<T extends object>(
   rpc: AnyRpc,
   discriminator: ReadonlyUint8Array,
   decoder: Decoder<T>,

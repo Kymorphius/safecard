@@ -7,6 +7,8 @@
  */
 
 export * from "./card";
+export * from "./loyalty";
+export * from "./membership";
 export * from "./merchant";
 export * from "./stats";
 export * from "./tokenCard";

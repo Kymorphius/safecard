@@ -69,6 +69,8 @@ export type BuyTokenCardInstruction<
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TAccountLoyalty extends string | AccountMeta<string> = string,
+  TAccountMembership extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -107,6 +109,12 @@ export type BuyTokenCardInstruction<
       TAccountAssociatedTokenProgram extends string
         ? ReadonlyAccount<TAccountAssociatedTokenProgram>
         : TAccountAssociatedTokenProgram,
+      TAccountLoyalty extends string
+        ? ReadonlyAccount<TAccountLoyalty>
+        : TAccountLoyalty,
+      TAccountMembership extends string
+        ? ReadonlyAccount<TAccountMembership>
+        : TAccountMembership,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -155,6 +163,8 @@ export type BuyTokenCardAsyncInput<
     InstructionAccountInput,
   TAccountAssociatedTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -169,6 +179,8 @@ export type BuyTokenCardAsyncInput<
   vault?: TAccountVault;
   tokenProgram?: TAccountTokenProgram;
   associatedTokenProgram?: TAccountAssociatedTokenProgram;
+  loyalty?: TAccountLoyalty;
+  membership?: TAccountMembership;
   systemProgram?: TAccountSystemProgram;
 };
 
@@ -183,6 +195,8 @@ export async function getBuyTokenCardInstructionAsync<
   TAccountVault extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
   TAccountAssociatedTokenProgram extends InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
@@ -197,6 +211,8 @@ export async function getBuyTokenCardInstructionAsync<
     TAccountVault,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
+    TAccountLoyalty,
+    TAccountMembership,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -244,6 +260,14 @@ export async function getBuyTokenCardInstructionAsync<
       InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -280,6 +304,16 @@ export async function getBuyTokenCardInstructionAsync<
     },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    loyalty: {
+      value: input.loyalty ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    membership: {
+      value: input.membership ?? null,
       isSigner: false,
       isWritable: false,
     },
@@ -370,6 +404,8 @@ export async function getBuyTokenCardInstructionAsync<
       getAccountMeta("vault", accounts.vault),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
       getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
+      getAccountMeta("loyalty", accounts.loyalty),
+      getAccountMeta("membership", accounts.membership),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getBuyTokenCardInstructionDataEncoder().encode({}),
@@ -417,6 +453,14 @@ export async function getBuyTokenCardInstructionAsync<
       InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -437,6 +481,8 @@ export type BuyTokenCardInput<
     InstructionAccountInput,
   TAccountAssociatedTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -451,6 +497,8 @@ export type BuyTokenCardInput<
   vault: TAccountVault;
   tokenProgram?: TAccountTokenProgram;
   associatedTokenProgram?: TAccountAssociatedTokenProgram;
+  loyalty?: TAccountLoyalty;
+  membership?: TAccountMembership;
   systemProgram?: TAccountSystemProgram;
 };
 
@@ -465,6 +513,8 @@ export function getBuyTokenCardInstruction<
   TAccountVault extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
   TAccountAssociatedTokenProgram extends InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
@@ -479,6 +529,8 @@ export function getBuyTokenCardInstruction<
     TAccountVault,
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
+    TAccountLoyalty,
+    TAccountMembership,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -525,6 +577,14 @@ export function getBuyTokenCardInstruction<
     InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
   >,
   ResolvedInstructionAccountMeta<
+    TAccountLoyalty,
+    InstructionAccountInputAddress<TAccountLoyalty>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMembership,
+    InstructionAccountInputAddress<TAccountMembership>
+  >,
+  ResolvedInstructionAccountMeta<
     TAccountSystemProgram,
     InstructionAccountInputAddress<TAccountSystemProgram>
   >
@@ -560,6 +620,16 @@ export function getBuyTokenCardInstruction<
     },
     associatedTokenProgram: {
       value: input.associatedTokenProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    loyalty: {
+      value: input.loyalty ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    membership: {
+      value: input.membership ?? null,
       isSigner: false,
       isWritable: false,
     },
@@ -600,6 +670,8 @@ export function getBuyTokenCardInstruction<
       getAccountMeta("vault", accounts.vault),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
       getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
+      getAccountMeta("loyalty", accounts.loyalty),
+      getAccountMeta("membership", accounts.membership),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getBuyTokenCardInstructionDataEncoder().encode({}),
@@ -647,6 +719,14 @@ export function getBuyTokenCardInstruction<
       InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -670,7 +750,9 @@ export type ParsedBuyTokenCardInstruction<
     vault: TAccountMetas[7];
     tokenProgram: TAccountMetas[8];
     associatedTokenProgram: TAccountMetas[9];
-    systemProgram: TAccountMetas[10];
+    loyalty?: TAccountMetas[10] | undefined;
+    membership?: TAccountMetas[11] | undefined;
+    systemProgram: TAccountMetas[12];
   };
   data: BuyTokenCardInstructionData;
 };
@@ -683,12 +765,12 @@ export function parseBuyTokenCardInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedBuyTokenCardInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 11) {
+  if (instruction.accounts.length < 13) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 11,
+        expectedAccountMetas: 13,
       },
     );
   }
@@ -697,6 +779,12 @@ export function parseBuyTokenCardInstruction<
     const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
+  };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === SAFECARD_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
   };
   return {
     programAddress: instruction.programAddress,
@@ -711,6 +799,8 @@ export function parseBuyTokenCardInstruction<
       vault: getNextAccount(),
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
+      loyalty: getNextOptionalAccount(),
+      membership: getNextOptionalAccount(),
       systemProgram: getNextAccount(),
     },
     data: getBuyTokenCardInstructionDataDecoder().decode(instruction.data),

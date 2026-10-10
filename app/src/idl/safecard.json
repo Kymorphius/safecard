@@ -61,6 +61,17 @@
           }
         },
         {
+          "name": "loyalty",
+          "docs": [
+            "可选：商家的会员优惠配置和顾客在本店的会员记录。都传了且满足条件才打折。"
+          ],
+          "optional": true
+        },
+        {
+          "name": "membership",
+          "optional": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -236,6 +247,14 @@
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
+          "name": "loyalty",
+          "optional": true
+        },
+        {
+          "name": "membership",
+          "optional": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -257,6 +276,7 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true,
           "relations": [
             "card"
@@ -304,6 +324,40 @@
           "relations": [
             "merchant"
           ]
+        },
+        {
+          "name": "membership",
+          "docs": [
+            "顾客在本店的会员记录，第一次签到时创建（顾客付租金）"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -323,6 +377,7 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true,
           "relations": [
             "card"
@@ -530,6 +585,37 @@
         },
         {
           "name": "token_program"
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -1156,6 +1242,95 @@
       ]
     },
     {
+      "name": "set_loyalty",
+      "discriminator": [
+        63,
+        153,
+        224,
+        99,
+        69,
+        177,
+        238,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "merchant"
+          ]
+        },
+        {
+          "name": "merchant",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  114,
+                  99,
+                  104,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "loyalty",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  121,
+                  97,
+                  108,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "min_check_ins",
+          "type": "u32"
+        },
+        {
+          "name": "discount_bps",
+          "type": "u16"
+        },
+        {
+          "name": "active_window",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "update_merchant",
       "discriminator": [
         192,
@@ -1221,6 +1396,32 @@
         63,
         140,
         182
+      ]
+    },
+    {
+      "name": "LoyaltyConfig",
+      "discriminator": [
+        190,
+        240,
+        195,
+        182,
+        79,
+        177,
+        63,
+        71
+      ]
+    },
+    {
+      "name": "Membership",
+      "discriminator": [
+        231,
+        141,
+        180,
+        98,
+        109,
+        168,
+        175,
+        166
       ]
     },
     {
@@ -1317,6 +1518,19 @@
       ]
     },
     {
+      "name": "MemberDiscountApplied",
+      "discriminator": [
+        229,
+        222,
+        87,
+        227,
+        183,
+        211,
+        37,
+        183
+      ]
+    },
+    {
       "name": "MerchantClosed",
       "discriminator": [
         78,
@@ -1388,6 +1602,16 @@
       "code": 6008,
       "name": "UnsupportedMint",
       "msg": "This token is not supported (the escrow did not receive the full price)"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidLoyalty",
+      "msg": "Loyalty settings are invalid (discount up to 50%, at least 1 check-in)"
+    },
+    {
+      "code": 6010,
+      "name": "WrongLoyaltyAccount",
+      "msg": "Loyalty or membership account does not belong to this shop and customer"
     }
   ],
   "types": [
@@ -1493,6 +1717,104 @@
           {
             "name": "remaining_sessions",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoyaltyConfig",
+      "docs": [
+        "商家设置的会员优惠（一档）：签到满 min_check_ins 次，且最近一次签到在",
+        "active_window 秒以内（0 表示不限），买新卡打 discount_bps 的折扣。"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_check_ins",
+            "type": "u32"
+          },
+          {
+            "name": "discount_bps",
+            "docs": [
+              "折扣，单位万分之一（1000 = 9 折）；0 表示关闭"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "active_window",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberDiscountApplied",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "full_price",
+            "type": "u64"
+          },
+          {
+            "name": "paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Membership",
+      "docs": [
+        "顾客在某个商家的会员记录：每次签到（SOL 或代币卡）由合约自动累加。"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          },
+          {
+            "name": "check_ins",
+            "type": "u64"
+          },
+          {
+            "name": "first_check_in_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_check_in_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -1779,6 +2101,16 @@
       "name": "CARD_SEED",
       "type": "bytes",
       "value": "[99, 97, 114, 100]"
+    },
+    {
+      "name": "LOYALTY_SEED",
+      "type": "bytes",
+      "value": "[108, 111, 121, 97, 108, 116, 121]"
+    },
+    {
+      "name": "MEMBER_SEED",
+      "type": "bytes",
+      "value": "[109, 101, 109, 98, 101, 114]"
     },
     {
       "name": "MERCHANT_SEED",

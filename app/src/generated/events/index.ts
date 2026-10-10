@@ -8,5 +8,6 @@
 
 export * from "./cardPurchased";
 export * from "./checkedIn";
+export * from "./memberDiscountApplied";
 export * from "./merchantClosed";
 export * from "./refunded";

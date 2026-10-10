@@ -10,6 +10,14 @@ import type { ReadonlyUint8Array } from "@solana/kit";
 
 export const CARD_SEED: ReadonlyUint8Array = new Uint8Array([99, 97, 114, 100]);
 
+export const LOYALTY_SEED: ReadonlyUint8Array = new Uint8Array([
+  108, 111, 121, 97, 108, 116, 121,
+]);
+
+export const MEMBER_SEED: ReadonlyUint8Array = new Uint8Array([
+  109, 101, 109, 98, 101, 114,
+]);
+
 export const MERCHANT_SEED: ReadonlyUint8Array = new Uint8Array([
   109, 101, 114, 99, 104, 97, 110, 116,
 ]);

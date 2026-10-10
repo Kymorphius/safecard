@@ -8,6 +8,8 @@ import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { merchantHasNoRefunds } from '@/lib/badges';
 import { NoRefundsPill } from './Badges';
+import { fetchAllMemberships, merchantScore } from '@/lib/loyalty';
+import { useNow } from '@/lib/hooks';
 import { StatusBadge } from './MerchantStatus';
 
 export function MerchantList() {
@@ -15,6 +17,8 @@ export function MerchantList() {
   const { t } = useI18n();
   const { data, error, loading } = usePoll('merchants', () => fetchMerchants(client.rpc), 8000);
   const tokenStats = usePoll('tstats:all', () => fetchTokenStats(client.rpc), 15000);
+  const members = usePoll('members:all', () => fetchAllMemberships(client.rpc), 30000);
+  const now = useNow();
   const escrowLabel = (m: { address: string; totalEscrowed: bigint }) => {
     const parts = [formatMoney(m.totalEscrowed, SOL)];
     for (const s of tokenStats.data ?? [])
@@ -33,7 +37,12 @@ export function MerchantList() {
       </div>
     );
 
-  const sorted = [...data].sort((a, b) => Number(b.cardsSold - a.cardsSold));
+  const score = (m: (typeof data)[number]) =>
+    merchantScore(m, (members.data ?? []).filter((x) => x.merchant === m.address), now);
+  // 按评分排序，评分相同再看售卡数
+  const sorted = [...data]
+    .map((m) => ({ ...m, score: score(m) }))
+    .sort((a, b) => b.score - a.score || Number(b.cardsSold - a.cardsSold));
   // 已关店的商家默认折叠：不再营业，但店铺页保留，持卡人仍可进去退款
   const open = sorted.filter((m) => !m.closed);
   const closed = sorted.filter((m) => m.closed);
@@ -47,6 +56,11 @@ export function MerchantList() {
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="truncate text-[15px] font-medium">{m.name}</span>
+          {!m.closed && (
+            <span className="pill pill-ok num" title={t('rating.scoreHint')}>
+              ★ {t('rating.score', { n: m.score })}
+            </span>
+          )}
           {merchantHasNoRefunds(m) && <NoRefundsPill />}
         </div>
         <div className="mono mt-0.5 text-xs text-subtle">{shortAddr(m.address)}</div>

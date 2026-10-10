@@ -26,18 +26,21 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type ReadonlySignerAccount,
+  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
+  type WritableSignerAccount,
 } from "@solana/kit";
 import {
   getAccountMetaFactory,
+  getAddressFromResolvedInstructionAccount,
   type InstructionAccountInput,
   type InstructionAccountInputAddress,
   type InstructionSignerInput,
   type ResolvedInstructionAccount,
   type ResolvedInstructionAccountMeta,
 } from "@solana/program-client-core";
+import { findMembershipPda } from "../pdas";
 import { SAFECARD_PROGRAM_ADDRESS } from "../programs";
 
 export const CHECK_IN_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
@@ -54,13 +57,16 @@ export type CheckInInstruction<
   TAccountCard extends string | AccountMeta<string> = string,
   TAccountMerchant extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountMembership extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
       TAccountOwner extends string
-        ? ReadonlySignerAccount<TAccountOwner> &
+        ? WritableSignerAccount<TAccountOwner> &
             AccountSignerMeta<TAccountOwner>
         : TAccountOwner,
       TAccountCard extends string
@@ -72,6 +78,12 @@ export type CheckInInstruction<
       TAccountAuthority extends string
         ? WritableAccount<TAccountAuthority>
         : TAccountAuthority,
+      TAccountMembership extends string
+        ? WritableAccount<TAccountMembership>
+        : TAccountMembership,
+      TAccountSystemProgram extends string
+        ? ReadonlyAccount<TAccountSystemProgram>
+        : TAccountSystemProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -103,50 +115,70 @@ export function getCheckInInstructionDataCodec(): FixedSizeCodec<
   );
 }
 
-export type CheckInInput<
+export type CheckInAsyncInput<
   TAccountOwner extends InstructionSignerInput = InstructionSignerInput,
   TAccountCard extends InstructionAccountInput = InstructionAccountInput,
   TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
   TAccountAuthority extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput =
+    InstructionAccountInput,
 > = {
   owner: TAccountOwner;
   card: TAccountCard;
   merchant: TAccountMerchant;
   /** 商家收款地址 */
   authority: TAccountAuthority;
+  /** 顾客在本店的会员记录，第一次签到时创建（顾客付租金） */
+  membership?: TAccountMembership;
+  systemProgram?: TAccountSystemProgram;
 };
 
-export function getCheckInInstruction<
+export async function getCheckInInstructionAsync<
   TAccountOwner extends InstructionSignerInput,
   TAccountCard extends InstructionAccountInput,
   TAccountMerchant extends InstructionAccountInput,
   TAccountAuthority extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
-  input: CheckInInput<
+  input: CheckInAsyncInput<
     TAccountOwner,
     TAccountCard,
     TAccountMerchant,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountMembership,
+    TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): CheckInInstruction<
-  TProgramAddress,
-  ResolvedInstructionAccountMeta<
-    TAccountOwner,
-    InstructionAccountInputAddress<TAccountOwner>
-  >,
-  ResolvedInstructionAccountMeta<
-    TAccountCard,
-    InstructionAccountInputAddress<TAccountCard>
-  >,
-  ResolvedInstructionAccountMeta<
-    TAccountMerchant,
-    InstructionAccountInputAddress<TAccountMerchant>
-  >,
-  ResolvedInstructionAccountMeta<
-    TAccountAuthority,
-    InstructionAccountInputAddress<TAccountAuthority>
+): Promise<
+  CheckInInstruction<
+    TProgramAddress,
+    ResolvedInstructionAccountMeta<
+      TAccountOwner,
+      InstructionAccountInputAddress<TAccountOwner>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCard,
+      InstructionAccountInputAddress<TAccountCard>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMerchant,
+      InstructionAccountInputAddress<TAccountMerchant>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountAuthority,
+      InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
+    >
   >
 > {
   // Program address.
@@ -157,7 +189,7 @@ export function getCheckInInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    owner: { value: input.owner ?? null, isSigner: true, isWritable: false },
+    owner: { value: input.owner ?? null, isSigner: true, isWritable: true },
     card: { value: input.card ?? null, isSigner: false, isWritable: true },
     merchant: {
       value: input.merchant ?? null,
@@ -169,11 +201,42 @@ export function getCheckInInstruction<
       isSigner: false,
       isWritable: true,
     },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    systemProgram: {
+      value: input.systemProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
     ResolvedInstructionAccount
   >;
+
+  // Resolve default values.
+  if (!accounts.membership.value) {
+    accounts.membership.value = await findMembershipPda(
+      {
+        merchant: getAddressFromResolvedInstructionAccount(
+          "merchant",
+          accounts.merchant.value,
+        ),
+        owner: getAddressFromResolvedInstructionAccount(
+          "owner",
+          accounts.owner.value,
+        ),
+      },
+      { programAddress },
+    );
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
 
   return Object.freeze({
     accounts: [
@@ -181,6 +244,8 @@ export function getCheckInInstruction<
       getAccountMeta("card", accounts.card),
       getAccountMeta("merchant", accounts.merchant),
       getAccountMeta("authority", accounts.authority),
+      getAccountMeta("membership", accounts.membership),
+      getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getCheckInInstructionDataEncoder().encode({}),
     programAddress,
@@ -201,6 +266,160 @@ export function getCheckInInstruction<
     ResolvedInstructionAccountMeta<
       TAccountAuthority,
       InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
+    >
+  >);
+}
+
+export type CheckInInput<
+  TAccountOwner extends InstructionSignerInput = InstructionSignerInput,
+  TAccountCard extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
+  TAccountAuthority extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput =
+    InstructionAccountInput,
+> = {
+  owner: TAccountOwner;
+  card: TAccountCard;
+  merchant: TAccountMerchant;
+  /** 商家收款地址 */
+  authority: TAccountAuthority;
+  /** 顾客在本店的会员记录，第一次签到时创建（顾客付租金） */
+  membership: TAccountMembership;
+  systemProgram?: TAccountSystemProgram;
+};
+
+export function getCheckInInstruction<
+  TAccountOwner extends InstructionSignerInput,
+  TAccountCard extends InstructionAccountInput,
+  TAccountMerchant extends InstructionAccountInput,
+  TAccountAuthority extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput,
+  TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
+>(
+  input: CheckInInput<
+    TAccountOwner,
+    TAccountCard,
+    TAccountMerchant,
+    TAccountAuthority,
+    TAccountMembership,
+    TAccountSystemProgram
+  >,
+  config?: { programAddress?: TProgramAddress },
+): CheckInInstruction<
+  TProgramAddress,
+  ResolvedInstructionAccountMeta<
+    TAccountOwner,
+    InstructionAccountInputAddress<TAccountOwner>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountCard,
+    InstructionAccountInputAddress<TAccountCard>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMerchant,
+    InstructionAccountInputAddress<TAccountMerchant>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountAuthority,
+    InstructionAccountInputAddress<TAccountAuthority>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMembership,
+    InstructionAccountInputAddress<TAccountMembership>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountSystemProgram,
+    InstructionAccountInputAddress<TAccountSystemProgram>
+  >
+> {
+  // Program address.
+  const programAddress = config?.programAddress ?? SAFECARD_PROGRAM_ADDRESS;
+
+  // Account meta helper.
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+
+  // Original accounts.
+  const originalAccounts = {
+    owner: { value: input.owner ?? null, isSigner: true, isWritable: true },
+    card: { value: input.card ?? null, isSigner: false, isWritable: true },
+    merchant: {
+      value: input.merchant ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    authority: {
+      value: input.authority ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    systemProgram: {
+      value: input.systemProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedInstructionAccount
+  >;
+
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+
+  return Object.freeze({
+    accounts: [
+      getAccountMeta("owner", accounts.owner),
+      getAccountMeta("card", accounts.card),
+      getAccountMeta("merchant", accounts.merchant),
+      getAccountMeta("authority", accounts.authority),
+      getAccountMeta("membership", accounts.membership),
+      getAccountMeta("systemProgram", accounts.systemProgram),
+    ],
+    data: getCheckInInstructionDataEncoder().encode({}),
+    programAddress,
+  } as CheckInInstruction<
+    TProgramAddress,
+    ResolvedInstructionAccountMeta<
+      TAccountOwner,
+      InstructionAccountInputAddress<TAccountOwner>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountCard,
+      InstructionAccountInputAddress<TAccountCard>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMerchant,
+      InstructionAccountInputAddress<TAccountMerchant>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountAuthority,
+      InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
     >
   >);
 }
@@ -216,6 +435,9 @@ export type ParsedCheckInInstruction<
     merchant: TAccountMetas[2];
     /** 商家收款地址 */
     authority: TAccountMetas[3];
+    /** 顾客在本店的会员记录，第一次签到时创建（顾客付租金） */
+    membership: TAccountMetas[4];
+    systemProgram: TAccountMetas[5];
   };
   data: CheckInInstructionData;
 };
@@ -228,12 +450,12 @@ export function parseCheckInInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCheckInInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 6) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 4,
+        expectedAccountMetas: 6,
       },
     );
   }
@@ -250,6 +472,8 @@ export function parseCheckInInstruction<
       card: getNextAccount(),
       merchant: getNextAccount(),
       authority: getNextAccount(),
+      membership: getNextAccount(),
+      systemProgram: getNextAccount(),
     },
     data: getCheckInInstructionDataDecoder().decode(instruction.data),
   };

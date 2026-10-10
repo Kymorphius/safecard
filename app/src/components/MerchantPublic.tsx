@@ -1,13 +1,22 @@
 'use client';
 
 import { type Address, isAddress } from '@solana/kit';
-import { ArrowUpRight, Lock } from 'lucide-react';
+import { ArrowUpRight, Gift, Lock } from 'lucide-react';
 import { type Merchant, fetchMaybeMerchant } from '@/generated';
 import { buyIx } from '@/lib/actions';
 import { formatMoney } from '@/lib/currency';
 import { type UiPlan, fetchTokenTotals, fetchUiCardsByOwner, fetchUiPlans, toTokenTotals } from '@/lib/model';
 import { explorerUrl, shortAddr, type WithAddress } from '@/lib/solana';
-import { useApp, usePoll, useSend } from '@/lib/hooks';
+import { useApp, useNow, usePoll, useSend } from '@/lib/hooks';
+import {
+  discountPercent,
+  fetchLoyalty,
+  fetchMembership,
+  loyaltyEnabled,
+  memberPrice,
+  qualifies,
+  windowDays,
+} from '@/lib/loyalty';
 import { useI18n } from '@/lib/i18n';
 import { CardView } from './CardView';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
@@ -22,6 +31,7 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
   const addr = merchantAddress as Address;
   const send = useSend();
   const { t } = useI18n();
+  const now = useNow();
 
   const merchantQ = usePoll(valid ? `m:${addr}` : null, async () => {
     const m = await fetchMaybeMerchant(client.rpc, addr, { commitment: 'confirmed' });
@@ -29,6 +39,9 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
   }, 4000);
   const plans = usePoll(valid ? `plans:${addr}` : null, () => fetchUiPlans(client.rpc, addr));
   const tokenStats = usePoll(valid ? `tstats:${addr}` : null, () => fetchTokenTotals(client.rpc, addr), 8000);
+  const loyalty = usePoll(valid ? `loyalty:${addr}` : null, () => fetchLoyalty(client.rpc, addr), 15000);
+  const membership = usePoll(wallet && valid ? `member:${addr}:${wallet}` : null, () =>
+    fetchMembership(client.rpc, addr, wallet!), 6000);
   const myCards = usePoll(wallet && valid ? `cards:${wallet}:${addr}` : null, async () =>
     (await fetchUiCardsByOwner(client.rpc, wallet!)).filter((c) => c.merchant === addr), 4000);
 
@@ -37,6 +50,7 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
     plans.refresh();
     myCards.refresh();
     tokenStats.refresh();
+    membership.refresh();
   };
 
   if (!valid) return <EmptyState>{t('store.invalid')}</EmptyState>;
@@ -44,8 +58,9 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
   const merchant = merchantQ.data;
   if (!merchant) return <EmptyState>{t('store.notFound')}</EmptyState>;
 
+  const isMember = qualifies(loyalty.data, membership.data, now);
   const buy = async (plan: UiPlan) => {
-    const ix = await buyIx(client.identity, plan);
+    const ix = await buyIx(client.identity, plan, isMember);
     send.dispatchAsync([ix]).then(refreshAll, () => {});
   };
   const ownedPlans = new Set(myCards.data?.map((c) => c.plan));
@@ -89,6 +104,12 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
         </Section>
       )}
 
+      {loyaltyEnabled(loyalty.data) && (
+        <Section title={t('loyalty.offer')}>
+          <MemberOffer loyalty={loyalty.data} checkIns={Number(membership.data?.checkIns ?? 0)} member={isMember} connected={!!wallet} />
+        </Section>
+      )}
+
       <Section title={t('store.trackRecord')}>
         <MerchantStats merchant={merchant} tokenTotals={toTokenTotals(tokenStats.data ?? [])} />
       </Section>
@@ -106,8 +127,21 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
                     <CurrencyTag symbol={p.currency.symbol} />
                   </div>
                   <div className="num mt-0.5 text-xs text-muted">
-                    {t('common.sessionsPrice', { n: p.sessions, price: formatMoney(p.price, p.currency) })}{' '}
-                    {t('store.perSession', { amount: formatMoney(p.price / BigInt(p.sessions), p.currency) })}
+                    {isMember && loyalty.data ? (
+                      <>
+                        <span className="line-through">{formatMoney(p.price, p.currency)}</span>{' '}
+                        <span className="text-accent">
+                          {t('loyalty.memberPrice')} {formatMoney(memberPrice(p.price, p.sessions, loyalty.data), p.currency)}
+                        </span>
+                        {' · '}
+                        {t('common.sessions', { n: p.sessions })}
+                      </>
+                    ) : (
+                      <>
+                        {t('common.sessionsPrice', { n: p.sessions, price: formatMoney(p.price, p.currency) })}{' '}
+                        {t('store.perSession', { amount: formatMoney(p.price / BigInt(p.sessions), p.currency) })}
+                      </>
+                    )}
                   </div>
                 </div>
                 <button
@@ -128,6 +162,51 @@ export function MerchantPublic({ merchantAddress }: { merchantAddress: string })
           <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
         </div>
       </Section>
+    </div>
+  );
+}
+
+function MemberOffer({
+  loyalty,
+  checkIns,
+  member,
+  connected,
+}: {
+  loyalty: NonNullable<Parameters<typeof discountPercent>[0]>;
+  checkIns: number;
+  member: boolean;
+  connected: boolean;
+}) {
+  const { t } = useI18n();
+  const pct = discountPercent(loyalty);
+  const days = windowDays(loyalty);
+  const progress = Math.min(checkIns / loyalty.minCheckIns, 1);
+  return (
+    <div className="panel flex flex-wrap items-center gap-5 p-5">
+      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent bg-accent-soft text-accent">
+        <Gift size={18} strokeWidth={1.75} />
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="text-[15px] font-medium">
+          {days > 0
+            ? t('loyalty.ruleWindow', { pct, n: loyalty.minCheckIns, days })
+            : t('loyalty.rule', { pct, n: loyalty.minCheckIns })}
+        </div>
+        {connected && (
+          <>
+            <div className="h-1.5 max-w-sm overflow-hidden rounded-full bg-surface-2">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${progress * 100}%` }} />
+            </div>
+            <div className={`text-xs ${member ? 'text-accent' : 'text-muted'}`}>
+              {member
+                ? t('loyalty.unlocked')
+                : checkIns >= loyalty.minCheckIns
+                  ? t('loyalty.lapsed')
+                  : t('loyalty.progress', { n: checkIns, min: loyalty.minCheckIns })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

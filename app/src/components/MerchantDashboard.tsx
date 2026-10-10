@@ -22,6 +22,15 @@ import { useI18n } from '@/lib/i18n';
 import { createPlanIx } from '@/lib/actions';
 import { type Currency, CURRENCIES, SOL, formatMoney, parseAmount } from '@/lib/currency';
 import { fetchTokenTotals, fetchUiCardsByMerchant, fetchUiPlans, toTokenTotals } from '@/lib/model';
+import {
+  discountPercent,
+  fetchLoyalty,
+  fetchMembershipsByMerchant,
+  loyaltyAddress,
+  loyaltyEnabled,
+  windowDays,
+} from '@/lib/loyalty';
+import { getSetLoyaltyInstructionAsync } from '@/generated';
 import { MerchantStats, StatusBadge } from './MerchantStatus';
 import { TxStatus } from './TxStatus';
 import { CurrencyTag, EmptyState, PageHeader, Section } from './ui';
@@ -227,6 +236,8 @@ function Dashboard({ merchant, refresh }: { merchant: WithAddress<Merchant>; ref
         </div>
       </Section>
 
+      <LoyaltySection merchant={merchant} />
+
       {!merchant.closed && (
         <Section title={t('md.dangerZone')}>
           <div
@@ -375,6 +386,124 @@ function PlanForm({ merchant, onDone }: { merchant: WithAddress<Merchant>; onDon
         <Plus size={14} /> {t('md.addPlan')}
       </button>
       <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
+    </div>
+  );
+}
+
+function LoyaltySection({ merchant }: { merchant: WithAddress<Merchant> }) {
+  const { client } = useApp();
+  const { t } = useI18n();
+  const send = useSend();
+  const loyalty = usePoll(`loyalty:${merchant.address}`, () => fetchLoyalty(client.rpc, merchant.address), 15000);
+  const members = usePoll(`members:${merchant.address}`, () => fetchMembershipsByMerchant(client.rpc, merchant.address), 8000);
+  const [min, setMin] = useState('5');
+  const [pct, setPct] = useState('10');
+  const [days, setDays] = useState('30');
+  const [loaded, setLoaded] = useState(false);
+
+  // 已有配置时用它填表
+  useEffect(() => {
+    if (loaded || loyalty.data === undefined) return;
+    if (loyaltyEnabled(loyalty.data)) {
+      setMin(String(loyalty.data.minCheckIns));
+      setPct(String(discountPercent(loyalty.data)));
+      setDays(String(windowDays(loyalty.data)));
+    }
+    setLoaded(true);
+  }, [loyalty.data, loaded]);
+
+  const minN = Number(min);
+  const pctN = Number(pct);
+  const daysN = Number(days);
+  const valid =
+    Number.isInteger(minN) && minN >= 1 && pctN > 0 && pctN <= 50 && Number.isInteger(daysN) && daysN >= 0;
+
+  const save = async (off = false) => {
+    const ix = await getSetLoyaltyInstructionAsync({
+      authority: client.identity,
+      loyalty: await loyaltyAddress(merchant.address),
+      minCheckIns: off ? (loyalty.data?.minCheckIns ?? 1) : minN,
+      discountBps: off ? 0 : Math.round(pctN * 100),
+      activeWindow: off ? 0 : daysN * 86_400,
+    });
+    send.dispatchAsync([ix]).then(loyalty.refresh, () => {});
+  };
+
+  const sorted = [...(members.data ?? [])].sort((a, b) => Number(b.checkIns - a.checkIns));
+  const enabled = loyaltyEnabled(loyalty.data);
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <Section title={t('md.loyalty')}>
+        <div className="panel space-y-4 p-5">
+          <p className="text-sm leading-relaxed text-muted">{t('md.loyaltyDesc')}</p>
+          {enabled && (
+            <p className="pill pill-ok">
+              {windowDays(loyalty.data!) > 0
+                ? t('loyalty.ruleWindow', {
+                    pct: discountPercent(loyalty.data!),
+                    n: loyalty.data!.minCheckIns,
+                    days: windowDays(loyalty.data!),
+                  })
+                : t('loyalty.rule', { pct: discountPercent(loyalty.data!), n: loyalty.data!.minCheckIns })}
+            </p>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="label">{t('md.minCheckIns')}</label>
+              <input className="input num" inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('md.discountPct')}</label>
+              <input className="input num" inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('md.windowDays')}</label>
+              <input className="input num" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary" disabled={!valid || send.isRunning || merchant.closed} onClick={() => save()}>
+              {t('md.saveLoyalty')}
+            </button>
+            {enabled && (
+              <button className="btn-secondary" disabled={send.isRunning} onClick={() => save(true)}>
+                {t('md.disableLoyalty')}
+              </button>
+            )}
+          </div>
+          <TxStatus isRunning={send.isRunning} error={send.error} signature={send.data} />
+        </div>
+      </Section>
+
+      <Section title={t('md.members')}>
+        <div className="panel overflow-x-auto">
+          {sorted.length ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-subtle">
+                  <th className="px-5 py-3 font-medium">{t('md.col.customer')}</th>
+                  <th className="px-5 py-3 font-medium">{t('md.col.checkIns')}</th>
+                  <th className="px-5 py-3 text-right font-medium">{t('md.col.lastVisit')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line border-t border-line">
+                {sorted.map((m) => (
+                  <tr key={m.address}>
+                    <td className="mono px-5 py-3 text-xs">{shortAddr(m.customer)}</td>
+                    <td className="num px-5 py-3">{m.checkIns.toString()}</td>
+                    <td className="num px-5 py-3 text-right text-muted">
+                      {new Date(Number(m.lastCheckInTs) * 1000).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-5 py-6 text-sm text-muted">{t('md.noMembers')}</p>
+          )}
+        </div>
+      </Section>
     </div>
   );
 }

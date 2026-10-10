@@ -5,7 +5,7 @@ import {
   type Merchant,
   getBuyCardInstructionAsync,
   getBuyTokenCardInstructionAsync,
-  getCheckInInstruction,
+  getCheckInInstructionAsync,
   getCheckInTokenInstructionAsync,
   getCreatePlanInstruction,
   getCreateTokenPlanInstructionAsync,
@@ -13,6 +13,7 @@ import {
   getRefundTokenInstructionAsync,
 } from '@/generated';
 import type { Currency } from './currency';
+import { loyaltyAddress, membershipAddress } from './loyalty';
 import type { UiCard, UiPlan } from './model';
 import { type WithAddress, findPlanPda } from './solana';
 
@@ -46,9 +47,19 @@ export async function createPlanIx(
   });
 }
 
-export async function buyIx(buyer: TransactionSigner, plan: UiPlan): Promise<Instruction> {
+/**
+ * applyMember 为 true 时附上会员优惠配置和会员记录，由合约判断是否打折。
+ * 两个账户都必须已存在，否则交易会失败，所以只在页面确认符合条件时才传。
+ */
+export async function buyIx(buyer: TransactionSigner, plan: UiPlan, applyMember = false): Promise<Instruction> {
+  const member = applyMember
+    ? {
+        loyalty: await loyaltyAddress(plan.merchant),
+        membership: await membershipAddress(plan.merchant, buyer.address),
+      }
+    : {};
   if (plan.kind === 'sol') {
-    return getBuyCardInstructionAsync({ buyer, merchant: plan.merchant, plan: plan.address });
+    return getBuyCardInstructionAsync({ buyer, merchant: plan.merchant, plan: plan.address, ...member });
   }
   return getBuyTokenCardInstructionAsync({
     buyer,
@@ -57,6 +68,7 @@ export async function buyIx(buyer: TransactionSigner, plan: UiPlan): Promise<Ins
     mint: plan.currency.mint!,
     buyerTokenAccount: await ata(buyer.address, plan.currency),
     tokenProgram: plan.currency.tokenProgram!,
+    ...member,
   });
 }
 
@@ -66,7 +78,12 @@ export async function checkInIx(
   merchant: WithAddress<Merchant>,
 ): Promise<Instruction> {
   if (card.kind === 'sol') {
-    return getCheckInInstruction({ owner, card: card.address, merchant: merchant.address, authority: merchant.authority });
+    return getCheckInInstructionAsync({
+      owner,
+      card: card.address,
+      merchant: merchant.address,
+      authority: merchant.authority,
+    });
   }
   return getCheckInTokenInstructionAsync({
     owner,

@@ -32,8 +32,13 @@ export const SAFECARD_ERROR__REFUND_NOT_ALLOWED = 0x1776; // 6006
 export const SAFECARD_ERROR__MATH_OVERFLOW = 0x1777; // 6007
 /** UnsupportedMint: This token is not supported (the escrow did not receive the full price) */
 export const SAFECARD_ERROR__UNSUPPORTED_MINT = 0x1778; // 6008
+/** InvalidLoyalty: Loyalty settings are invalid (discount up to 50%, at least 1 check-in) */
+export const SAFECARD_ERROR__INVALID_LOYALTY = 0x1779; // 6009
+/** WrongLoyaltyAccount: Loyalty or membership account does not belong to this shop and customer */
+export const SAFECARD_ERROR__WRONG_LOYALTY_ACCOUNT = 0x177a; // 6010
 
 export type SafecardError =
+  | typeof SAFECARD_ERROR__INVALID_LOYALTY
   | typeof SAFECARD_ERROR__INVALID_PLAN
   | typeof SAFECARD_ERROR__INVALID_TIMEOUT
   | typeof SAFECARD_ERROR__MATH_OVERFLOW
@@ -42,11 +47,13 @@ export type SafecardError =
   | typeof SAFECARD_ERROR__NO_SESSIONS_LEFT
   | typeof SAFECARD_ERROR__PLAN_INACTIVE
   | typeof SAFECARD_ERROR__REFUND_NOT_ALLOWED
-  | typeof SAFECARD_ERROR__UNSUPPORTED_MINT;
+  | typeof SAFECARD_ERROR__UNSUPPORTED_MINT
+  | typeof SAFECARD_ERROR__WRONG_LOYALTY_ACCOUNT;
 
 let safecardErrorMessages: Record<SafecardError, string> | undefined;
 if (process.env["NODE_ENV"] !== "production") {
   safecardErrorMessages = {
+    [SAFECARD_ERROR__INVALID_LOYALTY]: `Loyalty settings are invalid (discount up to 50%, at least 1 check-in)`,
     [SAFECARD_ERROR__INVALID_PLAN]: `Plan needs at least one session and a price of at least one lamport per session`,
     [SAFECARD_ERROR__INVALID_TIMEOUT]: `Inactivity timeout must be positive`,
     [SAFECARD_ERROR__MATH_OVERFLOW]: `Arithmetic overflow`,
@@ -56,6 +63,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [SAFECARD_ERROR__PLAN_INACTIVE]: `Plan is not on sale`,
     [SAFECARD_ERROR__REFUND_NOT_ALLOWED]: `Refund only allowed when the card is used up or the merchant has closed or gone inactive`,
     [SAFECARD_ERROR__UNSUPPORTED_MINT]: `This token is not supported (the escrow did not receive the full price)`,
+    [SAFECARD_ERROR__WRONG_LOYALTY_ACCOUNT]: `Loyalty or membership account does not belong to this shop and customer`,
   };
 }
 

@@ -29,9 +29,9 @@ import {
   type InstructionWithAccounts,
   type InstructionWithData,
   type ReadonlyAccount,
-  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
+  type WritableSignerAccount,
 } from "@solana/kit";
 import {
   getAccountMetaFactory,
@@ -42,7 +42,7 @@ import {
   type ResolvedInstructionAccount,
   type ResolvedInstructionAccountMeta,
 } from "@solana/program-client-core";
-import { findStatsPda } from "../pdas";
+import { findMembershipPda, findStatsPda } from "../pdas";
 import { SAFECARD_PROGRAM_ADDRESS } from "../programs";
 
 export const CHECK_IN_TOKEN_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
@@ -67,13 +67,16 @@ export type CheckInTokenInstruction<
   TAccountMerchantTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  TAccountMembership extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
       TAccountOwner extends string
-        ? ReadonlySignerAccount<TAccountOwner> &
+        ? WritableSignerAccount<TAccountOwner> &
             AccountSignerMeta<TAccountOwner>
         : TAccountOwner,
       TAccountCard extends string
@@ -100,6 +103,12 @@ export type CheckInTokenInstruction<
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
+      TAccountMembership extends string
+        ? WritableAccount<TAccountMembership>
+        : TAccountMembership,
+      TAccountSystemProgram extends string
+        ? ReadonlyAccount<TAccountSystemProgram>
+        : TAccountSystemProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -143,6 +152,9 @@ export type CheckInTokenAsyncInput<
     InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput =
+    InstructionAccountInput,
 > = {
   owner: TAccountOwner;
   card: TAccountCard;
@@ -154,6 +166,8 @@ export type CheckInTokenAsyncInput<
   vault?: TAccountVault;
   merchantTokenAccount?: TAccountMerchantTokenAccount;
   tokenProgram?: TAccountTokenProgram;
+  membership?: TAccountMembership;
+  systemProgram?: TAccountSystemProgram;
 };
 
 export async function getCheckInTokenInstructionAsync<
@@ -166,6 +180,8 @@ export async function getCheckInTokenInstructionAsync<
   TAccountVault extends InstructionAccountInput,
   TAccountMerchantTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
   input: CheckInTokenAsyncInput<
@@ -177,7 +193,9 @@ export async function getCheckInTokenInstructionAsync<
     TAccountStats,
     TAccountVault,
     TAccountMerchantTokenAccount,
-    TAccountTokenProgram
+    TAccountTokenProgram,
+    TAccountMembership,
+    TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -218,6 +236,14 @@ export async function getCheckInTokenInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
     >
   >
 > {
@@ -229,7 +255,7 @@ export async function getCheckInTokenInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    owner: { value: input.owner ?? null, isSigner: true, isWritable: false },
+    owner: { value: input.owner ?? null, isSigner: true, isWritable: true },
     card: { value: input.card ?? null, isSigner: false, isWritable: true },
     merchant: {
       value: input.merchant ?? null,
@@ -251,6 +277,16 @@ export async function getCheckInTokenInstructionAsync<
     },
     tokenProgram: {
       value: input.tokenProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    systemProgram: {
+      value: input.systemProgram ?? null,
       isSigner: false,
       isWritable: false,
     },
@@ -323,6 +359,25 @@ export async function getCheckInTokenInstructionAsync<
       ],
     });
   }
+  if (!accounts.membership.value) {
+    accounts.membership.value = await findMembershipPda(
+      {
+        merchant: getAddressFromResolvedInstructionAccount(
+          "merchant",
+          accounts.merchant.value,
+        ),
+        owner: getAddressFromResolvedInstructionAccount(
+          "owner",
+          accounts.owner.value,
+        ),
+      },
+      { programAddress },
+    );
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
 
   return Object.freeze({
     accounts: [
@@ -335,6 +390,8 @@ export async function getCheckInTokenInstructionAsync<
       getAccountMeta("vault", accounts.vault),
       getAccountMeta("merchantTokenAccount", accounts.merchantTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
+      getAccountMeta("membership", accounts.membership),
+      getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getCheckInTokenInstructionDataEncoder().encode({}),
     programAddress,
@@ -375,6 +432,14 @@ export async function getCheckInTokenInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
     >
   >);
 }
@@ -391,6 +456,9 @@ export type CheckInTokenInput<
     InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput =
+    InstructionAccountInput,
 > = {
   owner: TAccountOwner;
   card: TAccountCard;
@@ -402,6 +470,8 @@ export type CheckInTokenInput<
   vault: TAccountVault;
   merchantTokenAccount: TAccountMerchantTokenAccount;
   tokenProgram?: TAccountTokenProgram;
+  membership: TAccountMembership;
+  systemProgram?: TAccountSystemProgram;
 };
 
 export function getCheckInTokenInstruction<
@@ -414,6 +484,8 @@ export function getCheckInTokenInstruction<
   TAccountVault extends InstructionAccountInput,
   TAccountMerchantTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
+  TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
   input: CheckInTokenInput<
@@ -425,7 +497,9 @@ export function getCheckInTokenInstruction<
     TAccountStats,
     TAccountVault,
     TAccountMerchantTokenAccount,
-    TAccountTokenProgram
+    TAccountTokenProgram,
+    TAccountMembership,
+    TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CheckInTokenInstruction<
@@ -465,6 +539,14 @@ export function getCheckInTokenInstruction<
   ResolvedInstructionAccountMeta<
     TAccountTokenProgram,
     InstructionAccountInputAddress<TAccountTokenProgram>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMembership,
+    InstructionAccountInputAddress<TAccountMembership>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountSystemProgram,
+    InstructionAccountInputAddress<TAccountSystemProgram>
   >
 > {
   // Program address.
@@ -475,7 +557,7 @@ export function getCheckInTokenInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    owner: { value: input.owner ?? null, isSigner: true, isWritable: false },
+    owner: { value: input.owner ?? null, isSigner: true, isWritable: true },
     card: { value: input.card ?? null, isSigner: false, isWritable: true },
     merchant: {
       value: input.merchant ?? null,
@@ -500,6 +582,16 @@ export function getCheckInTokenInstruction<
       isSigner: false,
       isWritable: false,
     },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    systemProgram: {
+      value: input.systemProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -510,6 +602,10 @@ export function getCheckInTokenInstruction<
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   return Object.freeze({
@@ -523,6 +619,8 @@ export function getCheckInTokenInstruction<
       getAccountMeta("vault", accounts.vault),
       getAccountMeta("merchantTokenAccount", accounts.merchantTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
+      getAccountMeta("membership", accounts.membership),
+      getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getCheckInTokenInstructionDataEncoder().encode({}),
     programAddress,
@@ -563,6 +661,14 @@ export function getCheckInTokenInstruction<
     ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountSystemProgram,
+      InstructionAccountInputAddress<TAccountSystemProgram>
     >
   >);
 }
@@ -583,6 +689,8 @@ export type ParsedCheckInTokenInstruction<
     vault: TAccountMetas[6];
     merchantTokenAccount: TAccountMetas[7];
     tokenProgram: TAccountMetas[8];
+    membership: TAccountMetas[9];
+    systemProgram: TAccountMetas[10];
   };
   data: CheckInTokenInstructionData;
 };
@@ -595,12 +703,12 @@ export function parseCheckInTokenInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCheckInTokenInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 9) {
+  if (instruction.accounts.length < 11) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 9,
+        expectedAccountMetas: 11,
       },
     );
   }
@@ -622,6 +730,8 @@ export function parseCheckInTokenInstruction<
       vault: getNextAccount(),
       merchantTokenAccount: getNextAccount(),
       tokenProgram: getNextAccount(),
+      membership: getNextAccount(),
+      systemProgram: getNextAccount(),
     },
     data: getCheckInTokenInstructionDataDecoder().decode(instruction.data),
   };

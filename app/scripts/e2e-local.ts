@@ -8,7 +8,7 @@ import {
   fetchMerchant,
   findMerchantPda,
   getBuyCardInstructionAsync,
-  getCheckInInstruction,
+  getCheckInInstructionAsync,
   getCreatePlanInstruction,
   getRefundInstruction,
   getRegisterMerchantInstructionAsync,
@@ -61,7 +61,7 @@ async function main() {
   const before = await balance(shop);
   for (let i = 0; i < 2; i++) {
     await user.sendTransaction([
-      getCheckInInstruction({ owner: user.identity, card: card.address, merchant, authority: shop.identity.address }),
+      await getCheckInInstructionAsync({ owner: user.identity, card: card.address, merchant, authority: shop.identity.address }),
     ]);
   }
   assert((await balance(shop)) - before === 200_000_000n, '签到 2 次，商家收到 0.2 SOL');

@@ -57,6 +57,8 @@ export type BuyCardInstruction<
   TAccountMerchant extends string | AccountMeta<string> = string,
   TAccountPlan extends string | AccountMeta<string> = string,
   TAccountCard extends string | AccountMeta<string> = string,
+  TAccountLoyalty extends string | AccountMeta<string> = string,
+  TAccountMembership extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -77,6 +79,12 @@ export type BuyCardInstruction<
       TAccountCard extends string
         ? WritableAccount<TAccountCard>
         : TAccountCard,
+      TAccountLoyalty extends string
+        ? ReadonlyAccount<TAccountLoyalty>
+        : TAccountLoyalty,
+      TAccountMembership extends string
+        ? ReadonlyAccount<TAccountMembership>
+        : TAccountMembership,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -116,6 +124,8 @@ export type BuyCardAsyncInput<
   TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
   TAccountPlan extends InstructionAccountInput = InstructionAccountInput,
   TAccountCard extends InstructionAccountInput = InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -123,6 +133,9 @@ export type BuyCardAsyncInput<
   merchant: TAccountMerchant;
   plan: TAccountPlan;
   card?: TAccountCard;
+  /** 可选：商家的会员优惠配置和顾客在本店的会员记录。都传了且满足条件才打折。 */
+  loyalty?: TAccountLoyalty;
+  membership?: TAccountMembership;
   systemProgram?: TAccountSystemProgram;
 };
 
@@ -131,6 +144,8 @@ export async function getBuyCardInstructionAsync<
   TAccountMerchant extends InstructionAccountInput,
   TAccountPlan extends InstructionAccountInput,
   TAccountCard extends InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
@@ -139,6 +154,8 @@ export async function getBuyCardInstructionAsync<
     TAccountMerchant,
     TAccountPlan,
     TAccountCard,
+    TAccountLoyalty,
+    TAccountMembership,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -162,6 +179,14 @@ export async function getBuyCardInstructionAsync<
       InstructionAccountInputAddress<TAccountCard>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -183,6 +208,16 @@ export async function getBuyCardInstructionAsync<
     },
     plan: { value: input.plan ?? null, isSigner: false, isWritable: false },
     card: { value: input.card ?? null, isSigner: false, isWritable: true },
+    loyalty: {
+      value: input.loyalty ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     systemProgram: {
       value: input.systemProgram ?? null,
       isSigner: false,
@@ -221,6 +256,8 @@ export async function getBuyCardInstructionAsync<
       getAccountMeta("merchant", accounts.merchant),
       getAccountMeta("plan", accounts.plan),
       getAccountMeta("card", accounts.card),
+      getAccountMeta("loyalty", accounts.loyalty),
+      getAccountMeta("membership", accounts.membership),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getBuyCardInstructionDataEncoder().encode({}),
@@ -244,6 +281,14 @@ export async function getBuyCardInstructionAsync<
       InstructionAccountInputAddress<TAccountCard>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -255,6 +300,8 @@ export type BuyCardInput<
   TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
   TAccountPlan extends InstructionAccountInput = InstructionAccountInput,
   TAccountCard extends InstructionAccountInput = InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -262,6 +309,9 @@ export type BuyCardInput<
   merchant: TAccountMerchant;
   plan: TAccountPlan;
   card: TAccountCard;
+  /** 可选：商家的会员优惠配置和顾客在本店的会员记录。都传了且满足条件才打折。 */
+  loyalty?: TAccountLoyalty;
+  membership?: TAccountMembership;
   systemProgram?: TAccountSystemProgram;
 };
 
@@ -270,6 +320,8 @@ export function getBuyCardInstruction<
   TAccountMerchant extends InstructionAccountInput,
   TAccountPlan extends InstructionAccountInput,
   TAccountCard extends InstructionAccountInput,
+  TAccountLoyalty extends InstructionAccountInput,
+  TAccountMembership extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof SAFECARD_PROGRAM_ADDRESS,
 >(
@@ -278,6 +330,8 @@ export function getBuyCardInstruction<
     TAccountMerchant,
     TAccountPlan,
     TAccountCard,
+    TAccountLoyalty,
+    TAccountMembership,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -300,6 +354,14 @@ export function getBuyCardInstruction<
     InstructionAccountInputAddress<TAccountCard>
   >,
   ResolvedInstructionAccountMeta<
+    TAccountLoyalty,
+    InstructionAccountInputAddress<TAccountLoyalty>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountMembership,
+    InstructionAccountInputAddress<TAccountMembership>
+  >,
+  ResolvedInstructionAccountMeta<
     TAccountSystemProgram,
     InstructionAccountInputAddress<TAccountSystemProgram>
   >
@@ -320,6 +382,16 @@ export function getBuyCardInstruction<
     },
     plan: { value: input.plan ?? null, isSigner: false, isWritable: false },
     card: { value: input.card ?? null, isSigner: false, isWritable: true },
+    loyalty: {
+      value: input.loyalty ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    membership: {
+      value: input.membership ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
     systemProgram: {
       value: input.systemProgram ?? null,
       isSigner: false,
@@ -343,6 +415,8 @@ export function getBuyCardInstruction<
       getAccountMeta("merchant", accounts.merchant),
       getAccountMeta("plan", accounts.plan),
       getAccountMeta("card", accounts.card),
+      getAccountMeta("loyalty", accounts.loyalty),
+      getAccountMeta("membership", accounts.membership),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
     data: getBuyCardInstructionDataEncoder().encode({}),
@@ -366,6 +440,14 @@ export function getBuyCardInstruction<
       InstructionAccountInputAddress<TAccountCard>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountLoyalty,
+      InstructionAccountInputAddress<TAccountLoyalty>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountMembership,
+      InstructionAccountInputAddress<TAccountMembership>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountSystemProgram,
       InstructionAccountInputAddress<TAccountSystemProgram>
     >
@@ -382,7 +464,10 @@ export type ParsedBuyCardInstruction<
     merchant: TAccountMetas[1];
     plan: TAccountMetas[2];
     card: TAccountMetas[3];
-    systemProgram: TAccountMetas[4];
+    /** 可选：商家的会员优惠配置和顾客在本店的会员记录。都传了且满足条件才打折。 */
+    loyalty?: TAccountMetas[4] | undefined;
+    membership?: TAccountMetas[5] | undefined;
+    systemProgram: TAccountMetas[6];
   };
   data: BuyCardInstructionData;
 };
@@ -395,12 +480,12 @@ export function parseBuyCardInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedBuyCardInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -410,6 +495,12 @@ export function parseBuyCardInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === SAFECARD_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
@@ -417,6 +508,8 @@ export function parseBuyCardInstruction<
       merchant: getNextAccount(),
       plan: getNextAccount(),
       card: getNextAccount(),
+      loyalty: getNextOptionalAccount(),
+      membership: getNextOptionalAccount(),
       systemProgram: getNextAccount(),
     },
     data: getBuyCardInstructionDataDecoder().decode(instruction.data),

@@ -26,6 +26,7 @@ const dict = {
   'common.loading': ['Loading on-chain data…', '读取链上数据…'],
   'common.loadFailed': ['Failed to load. Please refresh.', '读取失败，请刷新重试'],
   'common.connectFirst': ['Connect your wallet first.', '请先连接钱包。'],
+  'common.sessions': ['{n} sessions', '{n} 次'],
   'common.sessionsPrice': ['{n} sessions · {price}', '{n} 次 · {price}'],
 
   // home
@@ -174,6 +175,50 @@ const dict = {
   'badge.protected.desc': ['Got money back from a shop that stopped serving', '商家违约时成功拿回了钱'],
   'badge.noRefunds': ['No refunds', '零退款'],
   'badge.noRefunds.desc': ['Has sold cards and never defaulted on a customer', '卖出过卡，且从未因违约让顾客退款'],
+
+  // loyalty & ratings
+  'level.new': ['Newcomer', '新客'],
+  'level.regular': ['Regular', '常客'],
+  'level.loyal': ['Loyal', '忠实会员'],
+  'level.vip': ['VIP', 'VIP'],
+  'rating.score': ['Score {n}', '评分 {n}'],
+  'rating.scoreHint': [
+    'Based on distinct active customers, check-ins in the last 30 days and refund rate',
+    '根据近 30 天活跃的不同顾客数、签到次数和退款率计算',
+  ],
+  'rating.title': ['Your rating', '我的等级'],
+  'rating.total': ['{n} check-ins across shops', '在各店累计签到 {n} 次'],
+  'rating.toNext': ['{n} more to {level}', '再签到 {n} 次升级为{level}'],
+  'rating.top': ['Top level reached', '已达最高等级'],
+  'rating.shops': ['Shops you visit', '常去的店'],
+  'rating.atShop': ['{n} check-ins', '签到 {n} 次'],
+  'loyalty.offer': ['Member offer', '会员优惠'],
+  'loyalty.rule': ['{pct}% off new cards after {n} check-ins', '在本店签到满 {n} 次，买新卡享 {pct}% 折扣'],
+  'loyalty.ruleWindow': [
+    '{pct}% off new cards after {n} check-ins, with a visit in the last {days} days',
+    '在本店签到满 {n} 次且 {days} 天内来过，买新卡享 {pct}% 折扣',
+  ],
+  'loyalty.progress': ['You: {n} / {min} check-ins', '你：已签到 {n} / {min} 次'],
+  'loyalty.lapsed': ['Visit again to reactivate your discount', '最近没来，再签到一次即可恢复折扣'],
+  'loyalty.unlocked': ['Unlocked: you pay the member price', '已解锁：购买时按会员价结算'],
+  'loyalty.memberPrice': ['Member price', '会员价'],
+  'loyalty.none': ['This shop has no member offer yet', '这家店还没有会员优惠'],
+  'md.loyalty': ['Member discount', '会员优惠'],
+  'md.loyaltyDesc': [
+    'Reward regulars. Only check-ins at your shop count, and the discount is enforced on-chain.',
+    '奖励常客。只计算在本店的签到次数，折扣由合约强制执行。',
+  ],
+  'md.minCheckIns': ['Check-ins needed', '需要签到次数'],
+  'md.discountPct': ['Discount %', '折扣 %'],
+  'md.windowDays': ['Last visit within (days, 0 = any)', '最近来过（天，0 = 不限）'],
+  'md.saveLoyalty': ['Save offer', '保存优惠'],
+  'md.disableLoyalty': ['Turn off', '关闭优惠'],
+  'md.members': ['Members', '会员'],
+  'md.col.checkIns': ['Check-ins', '签到次数'],
+  'md.col.lastVisit': ['Last visit', '最近到店'],
+  'md.noMembers': ['No check-ins yet', '还没有顾客签到'],
+  'err.6009': ['Loyalty settings are invalid (up to 50% off, at least 1 check-in)', '会员优惠设置无效（最多 50% 折扣，至少 1 次签到）'],
+  'err.6010': ['Membership does not belong to this shop and customer', '会员记录与这家店或这位顾客不匹配'],
 
   // errors
   'err.3012': [

@@ -8,6 +8,8 @@ import { customerBadges, fetchHistory } from '@/lib/badges';
 import { useApp, usePoll } from '@/lib/hooks';
 import { useI18n } from '@/lib/i18n';
 import { BadgeGrid } from './Badges';
+import { CustomerRating } from './CustomerRating';
+import { fetchMembershipsByCustomer } from '@/lib/loyalty';
 import { CardView } from './CardView';
 import { EmptyState, PageHeader } from './ui';
 
@@ -15,8 +17,11 @@ export function MyCards() {
   const { client, wallet } = useApp();
   const { t } = useI18n();
   const q = usePoll(wallet ? `mycards:${wallet}` : null, async () => {
-    const cards = await fetchUiCardsByOwner(client.rpc, wallet!);
-    const merchantAddrs = [...new Set(cards.map((c) => c.merchant))];
+    const [cards, memberships] = await Promise.all([
+      fetchUiCardsByOwner(client.rpc, wallet!),
+      fetchMembershipsByCustomer(client.rpc, wallet!),
+    ]);
+    const merchantAddrs = [...new Set([...cards.map((c) => c.merchant), ...memberships.map((m) => m.merchant)])];
     const [merchants, plans] = await Promise.all([
       fetchAllMaybeMerchant(client.rpc, merchantAddrs),
       Promise.all(merchantAddrs.map((m) => fetchUiPlans(client.rpc, m))),
@@ -24,7 +29,7 @@ export function MyCards() {
     const mMap = new Map<string, WithAddress<Merchant>>();
     merchants.forEach((m) => m.exists && mMap.set(m.address, { ...m.data, address: m.address }));
     const pMap = new Map(plans.flat().map((p) => [p.address as string, p]));
-    return { cards, mMap, pMap };
+    return { cards, memberships, mMap, pMap };
   }, 4000);
   // 链上历史较重，只在进入页面时读一次，不轮询
   const history = usePoll(wallet ? `history:${wallet}` : null, () => fetchHistory(client.rpc, wallet!), 10 * 60 * 1000);
@@ -33,6 +38,7 @@ export function MyCards() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('my.title')} />
+      {wallet && q.data && <CustomerRating memberships={q.data.memberships} merchants={q.data.mMap} />}
       {wallet && <BadgeGrid badges={badges} loading={history.loading} />}
       {!wallet ? (
         <EmptyState>{t('common.connectFirst')}</EmptyState>

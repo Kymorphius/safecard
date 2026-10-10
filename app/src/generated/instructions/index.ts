@@ -16,4 +16,5 @@ export * from "./createTokenPlan";
 export * from "./refund";
 export * from "./refundToken";
 export * from "./registerMerchant";
+export * from "./setLoyalty";
 export * from "./updateMerchant";
