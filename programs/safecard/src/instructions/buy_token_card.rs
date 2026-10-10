@@ -7,8 +7,9 @@ use anchor_spl::{
 use crate::{
     constants::*,
     error::ErrorCode,
-    events::CardPurchased,
-    state::{Merchant, MerchantTokenStats, TokenCard, TokenPlan},
+    events::{CardPurchased, MemberDiscountApplied},
+    loyalty::price_for,
+    state::{LoyaltyConfig, Membership, Merchant, MerchantTokenStats, TokenCard, TokenPlan},
 };
 
 #[derive(Accounts)]
@@ -60,12 +61,25 @@ pub struct BuyTokenCard<'info> {
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    pub loyalty: Option<Box<Account<'info, LoyaltyConfig>>>,
+    pub membership: Option<Box<Account<'info, Membership>>>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn handle_buy_token_card(ctx: Context<BuyTokenCard>) -> Result<()> {
-    let price = ctx.accounts.plan.price;
+    let full_price = ctx.accounts.plan.price;
     let sessions = ctx.accounts.plan.sessions;
+    let price = price_for(
+        ctx.program_id,
+        full_price,
+        sessions,
+        &ctx.accounts.merchant.key(),
+        &ctx.accounts.buyer.key(),
+        ctx.accounts.loyalty.as_deref(),
+        ctx.accounts.membership.as_deref(),
+        Clock::get()?.unix_timestamp,
+    )?;
+    let paid = price;
 
     transfer_checked(
         CpiContext::new(
@@ -108,6 +122,16 @@ pub fn handle_buy_token_card(ctx: Context<BuyTokenCard>) -> Result<()> {
         .total_escrowed
         .checked_add(price)
         .ok_or(ErrorCode::MathOverflow)?;
+
+    if paid < full_price {
+        emit!(MemberDiscountApplied {
+            card: card.key(),
+            owner: card.owner,
+            merchant: card.merchant,
+            full_price,
+            paid,
+        });
+    }
 
     emit!(CardPurchased {
         card: card.key(),

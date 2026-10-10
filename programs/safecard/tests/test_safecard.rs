@@ -64,6 +64,8 @@ fn buy_ix(env: &Env, buyer: &Pubkey) -> Instruction {
             merchant: env.merchant,
             plan: env.plan,
             card: card_pda(&env.plan, buyer),
+            loyalty: None,
+            membership: None,
             system_program: system_program::ID,
         }
         .to_account_metas(None),
@@ -79,6 +81,8 @@ fn check_in_ix(env: &Env, owner: &Pubkey, card: &Pubkey, authority: &Pubkey) -> 
             card: *card,
             merchant: env.merchant,
             authority: *authority,
+            membership: pda(&[MEMBER_SEED, env.merchant.as_ref(), owner.as_ref()]),
+            system_program: system_program::ID,
         }
         .to_account_metas(None),
     )

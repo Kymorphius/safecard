@@ -19,3 +19,12 @@ pub const TOKEN_CARD_SEED: &[u8] = b"token_card";
 
 #[constant]
 pub const TOKEN_STATS_SEED: &[u8] = b"token_stats";
+
+#[constant]
+pub const MEMBER_SEED: &[u8] = b"member";
+
+#[constant]
+pub const LOYALTY_SEED: &[u8] = b"loyalty";
+
+/// 会员折扣上限 50%
+pub const MAX_DISCOUNT_BPS: u16 = 5_000;

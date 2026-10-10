@@ -2,6 +2,7 @@ pub mod constants;
 pub mod error;
 pub mod events;
 pub mod instructions;
+pub mod loyalty;
 pub mod state;
 
 use anchor_lang::prelude::*;
@@ -68,6 +69,15 @@ pub mod safecard {
 
     pub fn refund_token(ctx: Context<RefundToken>) -> Result<()> {
         crate::instructions::refund_token::handle_refund_token(ctx)
+    }
+
+    pub fn set_loyalty(
+        ctx: Context<SetLoyalty>,
+        min_check_ins: u32,
+        discount_bps: u16,
+        active_window: i64,
+    ) -> Result<()> {
+        crate::instructions::set_loyalty::handle_set_loyalty(ctx, min_check_ins, discount_bps, active_window)
     }
 
     pub fn update_merchant(ctx: Context<UpdateMerchant>, name: String) -> Result<()> {

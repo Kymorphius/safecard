@@ -105,3 +105,36 @@ pub struct MerchantTokenStats {
     pub total_refunded: u64,
     pub bump: u8,
 }
+
+/// 顾客在某个商家的会员记录：每次签到（SOL 或代币卡）由合约自动累加。
+#[account]
+#[derive(InitSpace)]
+pub struct Membership {
+    pub merchant: Pubkey,
+    pub customer: Pubkey,
+    pub check_ins: u64,
+    pub first_check_in_ts: i64,
+    pub last_check_in_ts: i64,
+    pub bump: u8,
+}
+
+/// 商家设置的会员优惠（一档）：签到满 min_check_ins 次，且最近一次签到在
+/// active_window 秒以内（0 表示不限），买新卡打 discount_bps 的折扣。
+#[account]
+#[derive(InitSpace)]
+pub struct LoyaltyConfig {
+    pub merchant: Pubkey,
+    pub min_check_ins: u32,
+    /// 折扣，单位万分之一（1000 = 9 折）；0 表示关闭
+    pub discount_bps: u16,
+    pub active_window: i64,
+    pub bump: u8,
+}
+
+impl LoyaltyConfig {
+    pub fn qualifies(&self, member: &Membership, now: i64) -> bool {
+        self.discount_bps > 0
+            && member.check_ins >= self.min_check_ins as u64
+            && (self.active_window == 0 || now.saturating_sub(member.last_check_in_ts) <= self.active_window)
+    }
+}

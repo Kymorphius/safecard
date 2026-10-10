@@ -27,6 +27,15 @@ pub struct Refunded {
 }
 
 #[event]
+pub struct MemberDiscountApplied {
+    pub card: Pubkey,
+    pub owner: Pubkey,
+    pub merchant: Pubkey,
+    pub full_price: u64,
+    pub paid: u64,
+}
+
+#[event]
 pub struct MerchantClosed {
     pub merchant: Pubkey,
 }

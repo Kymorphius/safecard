@@ -3,8 +3,9 @@ use anchor_lang::{prelude::*, system_program};
 use crate::{
     constants::*,
     error::ErrorCode,
-    events::CardPurchased,
-    state::{Card, Merchant, Plan},
+    events::{CardPurchased, MemberDiscountApplied},
+    loyalty::price_for,
+    state::{Card, LoyaltyConfig, Membership, Merchant, Plan},
 };
 
 #[derive(Accounts)]
@@ -29,12 +30,26 @@ pub struct BuyCard<'info> {
         bump
     )]
     pub card: Account<'info, Card>,
+    /// 可选：商家的会员优惠配置和顾客在本店的会员记录。都传了且满足条件才打折。
+    pub loyalty: Option<Account<'info, LoyaltyConfig>>,
+    pub membership: Option<Account<'info, Membership>>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn handle_buy_card(ctx: Context<BuyCard>) -> Result<()> {
     let plan = &ctx.accounts.plan;
-    let price = plan.price;
+    let full_price = plan.price;
+    let price = price_for(
+        ctx.program_id,
+        full_price,
+        plan.sessions,
+        &ctx.accounts.merchant.key(),
+        &ctx.accounts.buyer.key(),
+        ctx.accounts.loyalty.as_ref(),
+        ctx.accounts.membership.as_ref(),
+        Clock::get()?.unix_timestamp,
+    )?;
+    let paid = price;
 
     // 钱进入卡片 PDA 托管，而不是直接给商家
     system_program::transfer(
@@ -68,6 +83,16 @@ pub fn handle_buy_card(ctx: Context<BuyCard>) -> Result<()> {
         .total_escrowed
         .checked_add(price)
         .ok_or(ErrorCode::MathOverflow)?;
+
+    if paid < full_price {
+        emit!(MemberDiscountApplied {
+            card: card.key(),
+            owner: card.owner,
+            merchant: card.merchant,
+            full_price,
+            paid,
+        });
+    }
 
     emit!(CardPurchased {
         card: card.key(),

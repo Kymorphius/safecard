@@ -20,4 +20,8 @@ pub enum ErrorCode {
     MathOverflow,
     #[msg("This token is not supported (the escrow did not receive the full price)")]
     UnsupportedMint,
+    #[msg("Loyalty settings are invalid (discount up to 50%, at least 1 check-in)")]
+    InvalidLoyalty,
+    #[msg("Loyalty or membership account does not belong to this shop and customer")]
+    WrongLoyaltyAccount,
 }

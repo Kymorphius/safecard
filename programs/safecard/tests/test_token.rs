@@ -165,6 +165,8 @@ fn buy_ix(env: &Env, buyer: &Pubkey) -> Instruction {
             vault: env.ata(&card),
             token_program: env.token_program,
             associated_token_program: associated_token::ID,
+            loyalty: None,
+            membership: None,
             system_program: system_program::ID,
         }
         .to_account_metas(None),
@@ -185,6 +187,8 @@ fn check_in_ix(env: &Env, owner: &Pubkey, payout_owner: &Pubkey) -> Instruction 
             vault: env.ata(&env.card),
             merchant_token_account: env.ata(payout_owner),
             token_program: env.token_program,
+            membership: pda(&[MEMBER_SEED, env.merchant.as_ref(), owner.as_ref()]),
+            system_program: system_program::ID,
         }
         .to_account_metas(None),
     )
@@ -380,4 +384,47 @@ fn second_plan_in_same_token_keeps_stats() {
     let stats: MerchantTokenStats = read(&env.svm, &env.stats);
     assert_eq!(stats.total_escrowed, PRICE, "init_if_needed must not reset existing stats");
     assert_eq!(read::<TokenPlan>(&env.svm, &plan2).plan_id, 1);
+}
+
+#[test]
+fn token_check_ins_count_toward_membership_and_discount() {
+    let mut env = setup(anchor_spl::token::ID);
+    for _ in 0..3 {
+        let ix = check_in_ix(&env, &env.user.pubkey(), &env.merchant_auth.pubkey());
+        send(&mut env.svm, ix, &[&env.user]).unwrap();
+    }
+    let member = pda(&[MEMBER_SEED, env.merchant.as_ref(), env.user.pubkey().as_ref()]);
+    assert_eq!(read::<Membership>(&env.svm, &member).check_ins, 3);
+
+    // 9 折，满 3 次
+    let loyalty = pda(&[LOYALTY_SEED, env.merchant.as_ref()]);
+    let ix = Instruction::new_with_bytes(
+        safecard::id(),
+        &safecard::instruction::SetLoyalty { min_check_ins: 3, discount_bps: 1_000, active_window: 0 }.data(),
+        safecard::accounts::SetLoyalty {
+            authority: env.merchant_auth.pubkey(),
+            merchant: env.merchant,
+            loyalty,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    send(&mut env.svm, ix, &[&env.merchant_auth]).unwrap();
+
+    // 第二个 USDC 套餐，用会员价买
+    let plan2 = pda(&[TOKEN_PLAN_SEED, env.merchant.as_ref(), &1u64.to_le_bytes()]);
+    let ix = create_token_plan_ix(&env, plan2, env.mint, "Next 10", 30 * USDC);
+    send(&mut env.svm, ix, &[&env.merchant_auth]).unwrap();
+    env.plan = plan2;
+    let mut ix = buy_ix(&env, &env.user.pubkey());
+    let n = ix.accounts.len();
+    // 可选账户位于 system_program 之前
+    ix.accounts[n - 3].pubkey = loyalty;
+    ix.accounts[n - 2].pubkey = member;
+    let user_ata = env.ata(&env.user.pubkey());
+    let before = env.balance(&user_ata);
+    send(&mut env.svm, ix, &[&env.user]).unwrap();
+    assert_eq!(before - env.balance(&user_ata), 27 * USDC, "paid 90% of 30 USDC");
+    let card2 = pda(&[TOKEN_CARD_SEED, plan2.as_ref(), env.user.pubkey().as_ref()]);
+    assert_eq!(read::<TokenCard>(&env.svm, &card2).escrow, 27 * USDC);
 }

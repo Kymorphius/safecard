@@ -7,12 +7,14 @@ use crate::{
     constants::*,
     error::ErrorCode,
     events::CheckedIn,
-    state::{Merchant, MerchantTokenStats, TokenCard},
+    loyalty::record_check_in,
+    state::{Membership, Merchant, MerchantTokenStats, TokenCard},
 };
 
 /// 用户签名确认消费一次，从托管账户放一次的代币给商家。
 #[derive(Accounts)]
 pub struct CheckInToken<'info> {
+    #[account(mut)]
     pub owner: Signer<'info>,
     #[account(
         mut,
@@ -54,6 +56,15 @@ pub struct CheckInToken<'info> {
     )]
     pub merchant_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + Membership::INIT_SPACE,
+        seeds = [MEMBER_SEED, merchant.key().as_ref(), owner.key().as_ref()],
+        bump
+    )]
+    pub membership: Box<Account<'info, Membership>>,
+    pub system_program: Program<'info, System>,
 }
 
 pub fn handle_check_in_token(ctx: Context<CheckInToken>) -> Result<()> {
@@ -93,8 +104,17 @@ pub fn handle_check_in_token(ctx: Context<CheckInToken>) -> Result<()> {
         .checked_sub(amount)
         .ok_or(ErrorCode::MathOverflow)?;
 
+    let now = Clock::get()?.unix_timestamp;
     let merchant = &mut ctx.accounts.merchant;
-    merchant.last_active_ts = Clock::get()?.unix_timestamp;
+    merchant.last_active_ts = now;
+    let merchant_key = merchant.key();
+    record_check_in(
+        &mut ctx.accounts.membership,
+        merchant_key,
+        ctx.accounts.owner.key(),
+        ctx.bumps.membership,
+        now,
+    )?;
 
     let stats = &mut ctx.accounts.stats;
     stats.total_escrowed = stats

@@ -8,6 +8,7 @@ pub mod create_token_plan;
 pub mod refund;
 pub mod refund_token;
 pub mod register_merchant;
+pub mod set_loyalty;
 pub mod update_merchant;
 
 pub use buy_card::*;
@@ -20,4 +21,5 @@ pub use create_token_plan::*;
 pub use refund::*;
 pub use refund_token::*;
 pub use register_merchant::*;
+pub use set_loyalty::*;
 pub use update_merchant::*;
