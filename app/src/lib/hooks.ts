@@ -24,9 +24,12 @@ export function useApp() {
 
 /** 当前 Unix 秒，每秒刷新（用于倒计时） */
 export function useNow(): number {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  // 预渲染时不能读当前时间：先返回 0，挂载后再读取（用到时间的内容都在链上数据加载后才渲染）
+  const [now, setNow] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    const tick = () => setNow(Math.floor(Date.now() / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
   return now;
