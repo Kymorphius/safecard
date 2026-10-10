@@ -34,32 +34,51 @@ export function MerchantList() {
     );
 
   const sorted = [...data].sort((a, b) => Number(b.cardsSold - a.cardsSold));
+  // 已关店的商家默认折叠：不再营业，但店铺页保留，持卡人仍可进去退款
+  const open = sorted.filter((m) => !m.closed);
+  const closed = sorted.filter((m) => m.closed);
+
+  const row = (m: (typeof sorted)[number]) => (
+    <Link
+      key={m.address}
+      href={`/m/${m.address}`}
+      className="group grid items-center gap-3 px-5 py-4 transition-colors hover:bg-surface-2 sm:grid-cols-[1.4fr_1fr_auto]"
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[15px] font-medium">{m.name}</span>
+          {merchantHasNoRefunds(m) && <NoRefundsPill />}
+        </div>
+        <div className="mono mt-0.5 text-xs text-subtle">{shortAddr(m.address)}</div>
+      </div>
+      <div className="flex gap-5 text-xs text-muted">
+        <span className="num">{t('home.inEscrow', { amount: escrowLabel(m) })}</span>
+        <span className="num">{t('home.sold', { n: m.cardsSold.toString() })}</span>
+        <span className="num">{t('home.refunds', { n: m.refundCount.toString() })}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3 sm:justify-end">
+        <StatusBadge merchant={m} />
+        <ChevronRight size={16} className="text-subtle transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+
   return (
-    <div className="panel divide-y divide-line overflow-hidden">
-      {sorted.map((m) => (
-        <Link
-          key={m.address}
-          href={`/m/${m.address}`}
-          className="group grid items-center gap-3 px-5 py-4 transition-colors hover:bg-surface-2 sm:grid-cols-[1.4fr_1fr_auto]"
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-[15px] font-medium">{m.name}</span>
-              {merchantHasNoRefunds(m) && <NoRefundsPill />}
-            </div>
-            <div className="mono mt-0.5 text-xs text-subtle">{shortAddr(m.address)}</div>
-          </div>
-          <div className="flex gap-5 text-xs text-muted">
-            <span className="num">{t('home.inEscrow', { amount: escrowLabel(m) })}</span>
-            <span className="num">{t('home.sold', { n: m.cardsSold.toString() })}</span>
-            <span className="num">{t('home.refunds', { n: m.refundCount.toString() })}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <StatusBadge merchant={m} />
-            <ChevronRight size={16} className="text-subtle transition-transform group-hover:translate-x-0.5" />
-          </div>
-        </Link>
-      ))}
+    <div className="space-y-4">
+      {open.length > 0 ? (
+        <div className="panel divide-y divide-line overflow-hidden">{open.map(row)}</div>
+      ) : (
+        <div className="panel p-8 text-center text-sm text-muted">{t('home.noOpen')}</div>
+      )}
+      {closed.length > 0 && (
+        <details className="group/closed">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs text-subtle hover:text-fg">
+            <ChevronRight size={14} className="transition-transform group-open/closed:rotate-90" />
+            {t('home.closedShops', { n: closed.length })}
+          </summary>
+          <div className="panel mt-3 divide-y divide-line overflow-hidden opacity-70">{closed.map(row)}</div>
+        </details>
+      )}
     </div>
   );
 }

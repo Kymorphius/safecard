@@ -52,6 +52,8 @@ const dict = {
   'home.noMerchants.after': [' to register the first one.', ' 注册第一家店吧。'],
   'home.inEscrow': ['{amount} in escrow', '托管中 {amount}'],
   'home.sold': ['{n} sold', '售卡 {n}'],
+  'home.closedShops': ['Closed shops ({n})', '已关店的商家（{n}）'],
+  'home.noOpen': ['No shops are open right now.', '目前没有营业中的商家。'],
   'home.refunds': ['{n} refunds', '退款 {n}'],
 
   // merchant status
